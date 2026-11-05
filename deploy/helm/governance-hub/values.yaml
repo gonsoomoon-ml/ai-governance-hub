@@ -55,7 +55,8 @@ ingress:
   className: alb
   host: hub-dev.CHANGE_ME
   annotations:
-    alb.ingress.kubernetes.io/scheme: internal
+    # internet-facing + inbound-cidrs, exactly how the gateway's admin-ui Ingress is reached (no internal ALB there)
+    alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
     alb.ingress.kubernetes.io/certificate-arn: CHANGE_ME
