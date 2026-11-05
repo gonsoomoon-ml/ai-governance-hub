@@ -1,0 +1,7 @@
+AI Governance Hub {{ .Chart.AppVersion }} — release {{ .Release.Name }} in {{ .Release.Namespace }}
+
+  in-cluster URL (gateway-proxy POLICY_HUB_URL):  http://{{ include "governance-hub.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}
+  admin browser (VPN):                           https://{{ .Values.ingress.host }}/
+
+  gateway-proxy must carry POLICY_HUB_URL (above) and POLICY_HUB_TOKEN = secrets.HUB_TOKEN of this release.
+  Cognito app client {{ .Values.env.OIDC_CLIENT_ID }} must list {{ .Values.env.OIDC_REDIRECT_URI }} as a callback URL.

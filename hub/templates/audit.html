@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ t("audit.title") }}</h1>
+<table>
+  <tr><th>{{ t("audit.col.at") }}</th><th>{{ t("audit.col.actor") }}</th><th>{{ t("audit.col.action") }}</th><th>{{ t("audit.col.team") }}</th><th>{{ t("audit.col.detail") }}</th></tr>
+  {% for e in entries %}
+  <tr><td>{{ e.at }}</td><td>{{ e.actor }}</td><td>{{ e.action }}</td><td class="muted">{{ e.team_id }}</td><td><code>{{ json_dumps(e.detail) if e.detail else "" }}</code></td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

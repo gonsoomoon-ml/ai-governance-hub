@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ t("org.title") }}</h1>
+{% if errors %}<div class="err"><strong>{{ t("team.errors") }}</strong><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<form method="post" action="/org">
+  <fieldset>
+    <legend>{{ t("org.locks") }}</legend>
+    {% for key, choices in lock_choices.items() %}
+    <div><strong>{{ t("lock." + key) }}</strong>
+      <label class="inline"><input type="radio" name="fixed_{{ key }}" value="" {% if not org.locks_fixed.get(key) %}checked{% endif %}> {{ t("org.team_decides") }}</label>
+      {% for c in choices %}
+      <label class="inline"><input type="radio" name="fixed_{{ key }}" value="{{ c }}" {% if org.locks_fixed.get(key) == c %}checked{% endif %}> {{ t("lock." + key + "." + c) }}</label>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </fieldset>
+  <h2>{{ t("org.default_policy") }}</h2>
+  {% with with_models=false, org=none %}{% include "_policy_form.html" %}{% endwith %}
+  <div class="actions"><button class="primary">{{ t("org.save") }}</button></div>
+</form>
+{% endblock %}

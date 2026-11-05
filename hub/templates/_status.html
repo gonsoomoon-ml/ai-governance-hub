@@ -1,0 +1,2 @@
+{% set s = (item.status if item else "none") %}
+<span class="pill {{ s }}">{{ t("status." + s) }}</span>

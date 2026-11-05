@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ t("team.title") }}: {{ team.dept }} / {{ team.name }}</h1>
+{% if errors %}<div class="err"><strong>{{ t("team.errors") }}</strong><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+
+<div class="card">
+  {% with item=draft %}{% include "_status.html" %}{% endwith %}
+  {% if draft and draft.status == "pending" %}<span class="muted">{{ t("team.submitted_by") }}: {{ draft.submitted_by }} · {{ draft.submitted_at }}</span>{% endif %}
+  {% if draft and draft.status == "rejected" and draft.rejected_reason %}<div class="err">{{ t("team.rejected_reason") }}: {{ draft.rejected_reason }}</div>{% endif %}
+  <div>
+  {% if published %}{{ t("team.published") }} v{{ published.version }} · {{ published.published_at }} · {{ published.published_by }} · <code>{{ published.version_hash }}</code>
+  {% else %}<span class="muted">{{ t("team.no_published") }}</span>{% endif %}
+  </div>
+  <a href="/teams/{{ team.team_id }}/preview.json" target="_blank">{{ t("team.preview") }}</a>
+</div>
+
+<form method="post" action="/teams/{{ team.team_id }}/save">
+  {% with with_models=true %}{% include "_policy_form.html" %}{% endwith %}
+  <div class="actions">
+    <button class="primary">{{ t("team.save") }}</button>
+  </div>
+</form>
+<div class="actions">
+  {% if draft and draft.status in ("draft", "rejected") %}
+  <form method="post" action="/teams/{{ team.team_id }}/submit"><button>{{ t("team.submit") }}</button></form>
+  {% endif %}
+  {% if session.role == "admin" and draft and draft.status == "pending" %}
+  <form method="post" action="/teams/{{ team.team_id }}/approve"><button class="primary">{{ t("team.approve") }}</button></form>
+  <form method="post" action="/teams/{{ team.team_id }}/reject"><input type="text" name="reason" placeholder="{{ t('team.reject.reason') }}"> <button class="danger">{{ t("team.reject") }}</button></form>
+  {% endif %}
+  {% if session.role == "admin" and draft and draft.status != "pending" %}
+  <form method="post" action="/teams/{{ team.team_id }}/publish"><button>{{ t("team.publish") }}</button></form>
+  {% endif %}
+</div>
+
+{% if versions %}
+<h2>{{ t("team.history") }}</h2>
+<table>
+  {% for v in versions %}<tr><td>v{{ v.version }}</td><td>{{ v.published_at }}</td><td>{{ v.published_by }}</td><td><code>{{ v.version_hash }}</code></td></tr>{% endfor %}
+</table>
+{% endif %}
+{% endblock %}

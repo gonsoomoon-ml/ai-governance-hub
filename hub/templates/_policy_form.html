@@ -1,0 +1,45 @@
+{# shared editor fields; `doc` is the policy document, `with_models` toggles the model block #}
+{% if with_models %}
+<fieldset>
+  <legend>{{ t("team.models") }}</legend>
+  {% if models_error %}<div class="err">{{ t("team.models.error") }}: {{ models_error }}</div>{% endif %}
+  <label><input type="checkbox" name="models_unrestricted" {% if doc.models is none %}checked{% endif %}> {{ t("team.models.unrestricted") }}</label>
+  {% for m in models %}
+  <label class="inline"><input type="checkbox" name="models" value="{{ m.alias }}" {% if doc.models and m.alias in doc.models %}checked{% endif %}> {{ m.display_name }} <span class="muted">{{ m.alias }}</span></label>
+  {% endfor %}
+</fieldset>
+{% endif %}
+<fieldset>
+  <legend>{{ t("team.marketplace") }}</legend>
+  <label>{{ t("team.marketplace.name") }} <input type="text" name="marketplace_name" value="{{ doc.marketplace.name if doc.marketplace else '' }}"></label>
+  <label>{{ t("team.marketplace.repo") }} <input type="text" name="marketplace_repo" value="{{ doc.marketplace.repo if doc.marketplace else '' }}"></label>
+  <label>{{ t("team.marketplace.ref") }} <input type="text" name="marketplace_ref" value="{{ doc.marketplace.ref if doc.marketplace and doc.marketplace.ref else '' }}"></label>
+  <label>{{ t("team.plugins") }} <textarea name="plugins">{{ plugins_text }}</textarea></label>
+</fieldset>
+<fieldset>
+  <legend>{{ t("team.mcp_servers") }}</legend>
+  <textarea name="mcp_servers">{{ mcp_text }}</textarea>
+</fieldset>
+<fieldset>
+  <legend>{{ t("team.agents") }}</legend>
+  {% if catalog %}
+  {% for a in catalog %}
+  <label class="inline"><input type="checkbox" name="agents" value="{{ a.name }}" {% if a.name in doc.agents %}checked{% endif %}> {{ a.name }} <span class="muted">{{ a.kind }} · {{ a.tools | join(", ") }}</span></label>
+  {% endfor %}
+  {% else %}<span class="muted">{{ t("team.agents.none") }}</span>{% endif %}
+</fieldset>
+<fieldset>
+  <legend>{{ t("team.locks") }}</legend>
+  {% for key, choices in lock_choices.items() %}
+  {% set fixed = org.locks_fixed.get(key) if org else none %}
+  <div>
+    <strong>{{ t("lock." + key) }}</strong>
+    {% if fixed %}<span class="pill">{{ t("team.locks.fixed") }}: {{ t("lock." + key + "." + fixed) }}</span><input type="hidden" name="lock_{{ key }}" value="{{ fixed }}">
+    {% else %}
+      {% for c in choices %}
+      <label class="inline"><input type="radio" name="lock_{{ key }}" value="{{ c }}" {% if (doc.locks or {}).get(key, '') == c %}checked{% endif %}> {{ t("lock." + key + "." + c) }}</label>
+      {% endfor %}
+    {% endif %}
+  </div>
+  {% endfor %}
+</fieldset>
