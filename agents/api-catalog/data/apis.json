@@ -1,0 +1,73 @@
+{
+  "payments": {
+    "description": "Payments service: charge, capture, refund. Internal only.",
+    "owner_team": "engineering/platform",
+    "version": "2.3.0",
+    "base_url": "https://api.internal.example.com/payments",
+    "auth": "Bearer service token (Vault path secret/payments)",
+    "openapi": {
+      "openapi": "3.0.3",
+      "info": {"title": "Payments API", "version": "2.3.0"},
+      "servers": [{"url": "https://api.internal.example.com/payments"}],
+      "paths": {
+        "/v1/payments/{payment_id}": {"get": {"operationId": "getPayment", "summary": "Get a payment",
+          "parameters": [{"name": "payment_id", "in": "path", "required": true, "schema": {"type": "string"}}],
+          "responses": {"200": {"description": "Payment", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Payment"}}}}}}},
+        "/v1/refunds": {"post": {"operationId": "createRefund", "summary": "Refund a captured payment (full or partial)",
+          "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RefundRequest"}}}},
+          "responses": {"201": {"description": "Refund created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Refund"}}}},
+                        "409": {"description": "Payment not refundable"}}}}
+      },
+      "components": {"schemas": {
+        "Payment": {"type": "object", "properties": {"id": {"type": "string"}, "amount": {"type": "integer", "description": "minor units (KRW: won)"}, "currency": {"type": "string"}, "status": {"type": "string", "enum": ["authorized", "captured", "refunded"]}}},
+        "RefundRequest": {"type": "object", "required": ["payment_id", "amount", "reason"], "properties": {"payment_id": {"type": "string"}, "amount": {"type": "integer"}, "reason": {"type": "string", "enum": ["customer_request", "duplicate", "fraud"]}, "idempotency_key": {"type": "string", "description": "UUID; required for retries"}}},
+        "Refund": {"type": "object", "properties": {"id": {"type": "string"}, "payment_id": {"type": "string"}, "amount": {"type": "integer"}, "status": {"type": "string", "enum": ["pending", "succeeded", "failed"]}}}
+      }}
+    },
+    "examples": {
+      "createRefund": {"request": {"method": "POST", "path": "/v1/refunds", "headers": {"Authorization": "Bearer <service-token>", "Idempotency-Key": "4c1e...", "Content-Type": "application/json"}, "body": {"payment_id": "pay_01HZX", "amount": 12000, "reason": "customer_request"}}, "response": {"status": 201, "body": {"id": "rf_01J0A", "payment_id": "pay_01HZX", "amount": 12000, "status": "pending"}}},
+      "getPayment": {"request": {"method": "GET", "path": "/v1/payments/pay_01HZX", "headers": {"Authorization": "Bearer <service-token>"}}, "response": {"status": 200, "body": {"id": "pay_01HZX", "amount": 45000, "currency": "KRW", "status": "captured"}}}
+    }
+  },
+  "orders": {
+    "description": "Order management: create orders, read order status and line items.",
+    "owner_team": "engineering/platform",
+    "version": "1.8.1",
+    "base_url": "https://api.internal.example.com/orders",
+    "auth": "Bearer service token (Vault path secret/orders)",
+    "openapi": {
+      "openapi": "3.0.3", "info": {"title": "Orders API", "version": "1.8.1"},
+      "paths": {
+        "/v1/orders/{order_id}": {"get": {"operationId": "getOrder", "summary": "Get an order with line items",
+          "parameters": [{"name": "order_id", "in": "path", "required": true, "schema": {"type": "string"}}],
+          "responses": {"200": {"description": "Order"}}}},
+        "/v1/orders": {"post": {"operationId": "createOrder", "summary": "Create an order",
+          "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["user_id", "items"], "properties": {"user_id": {"type": "string"}, "items": {"type": "array", "items": {"type": "object", "properties": {"sku": {"type": "string"}, "qty": {"type": "integer"}}}}}}}}},
+          "responses": {"201": {"description": "Order created"}}}}
+      }
+    },
+    "examples": {"getOrder": {"request": {"method": "GET", "path": "/v1/orders/ord_7781"}, "response": {"status": 200, "body": {"id": "ord_7781", "status": "paid", "items": [{"sku": "SKU-100", "qty": 2}]}}}}
+  },
+  "users": {
+    "description": "User directory: profile lookup by id or email (PII — read scope only).",
+    "owner_team": "engineering/mobile",
+    "version": "3.0.0",
+    "base_url": "https://api.internal.example.com/users",
+    "auth": "Bearer service token with scope users:read",
+    "openapi": {"openapi": "3.0.3", "info": {"title": "Users API", "version": "3.0.0"},
+      "paths": {"/v1/users/{user_id}": {"get": {"operationId": "getUser", "summary": "Get a user profile", "parameters": [{"name": "user_id", "in": "path", "required": true, "schema": {"type": "string"}}], "responses": {"200": {"description": "User"}}}}}},
+    "examples": {"getUser": {"request": {"method": "GET", "path": "/v1/users/usr_42"}, "response": {"status": 200, "body": {"id": "usr_42", "email": "j.doe@example.com", "locale": "ko-KR"}}}}
+  },
+  "notifications": {
+    "description": "Notification service: send email / push / SMS via templates.",
+    "owner_team": "engineering/platform",
+    "version": "1.2.0",
+    "base_url": "https://api.internal.example.com/notifications",
+    "auth": "Bearer service token (Vault path secret/notifications)",
+    "openapi": {"openapi": "3.0.3", "info": {"title": "Notifications API", "version": "1.2.0"},
+      "paths": {"/v1/notifications": {"post": {"operationId": "sendNotification", "summary": "Send a templated notification",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "required": ["user_id", "template", "channel"], "properties": {"user_id": {"type": "string"}, "template": {"type": "string"}, "channel": {"type": "string", "enum": ["email", "push", "sms"]}, "params": {"type": "object"}}}}}},
+        "responses": {"202": {"description": "Accepted"}}}}}},
+    "examples": {"sendNotification": {"request": {"method": "POST", "path": "/v1/notifications", "body": {"user_id": "usr_42", "template": "refund_succeeded", "channel": "email", "params": {"amount": 12000}}}, "response": {"status": 202, "body": {"id": "ntf_9f1"}}}}
+  }
+}
