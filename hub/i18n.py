@@ -278,6 +278,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "help.faq.3.q": "허브가 꺼지면?",
         "help.faq.3.a": "PC 는 마지막으로 받은 규칙(캐시)으로 동작하고, 허용 모델 제한은 게이트웨이가 계속 집행합니다.",
         "lang.ko": "한",
+        "theme.light": "밝게",
+        "theme.dark": "어둡게",
+        "theme.auto": "자동",
         "lang.en": "EN",
         "audit.action.team_added": "팀을 관리 대상에 추가",
         "audit.action.team_removed": "관리 해제",
@@ -580,6 +583,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "help.faq.3.q": "What if the hub is down?",
         "help.faq.3.a": "PCs keep working with the last rules they received (cache), and the gateway keeps enforcing the model restriction.",
         "lang.ko": "한",
+        "theme.light": "Light",
+        "theme.dark": "Dark",
+        "theme.auto": "Auto",
         "lang.en": "EN",
         "audit.action.team_added": "Team added to management",
         "audit.action.team_removed": "Team removed from management",
@@ -643,3 +649,18 @@ def lang_of(request, default: str) -> str:
         if candidate in LANGS:
             return candidate
     return default if default in LANGS else "ko"
+
+
+THEMES = ("light", "dark", "auto")
+THEME_COOKIE = "hub_theme"
+
+
+def theme_of(request, default: str = "auto") -> str:
+    """요청의 화면 테마: ?theme= 이 있으면 그것, 아니면 쿠키, 아니면 기본(auto = OS 설정 따라감). 모르는 값은 무시.
+
+    The request's screen theme: ?theme= if present, else the cookie, else the default (auto follows the OS); unknown ignored.
+    """
+    for candidate in (request.query_params.get("theme"), request.cookies.get(THEME_COOKIE)):
+        if candidate in THEMES:
+            return candidate
+    return default if default in THEMES else "auto"

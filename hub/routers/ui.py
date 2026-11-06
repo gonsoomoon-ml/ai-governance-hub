@@ -23,7 +23,7 @@ from hub.auth import current_session, require_admin, require_session, require_te
 from hub.diff import policy_diff
 from hub.fragment import LOCK_CHOICES, STRICT_DEFAULTS, build_fragment, empty_policy, validate_policy, version_of
 from hub.gateway_api import GatewayApiError
-from hub.i18n import LANG_COOKIE, lang_of, translator
+from hub.i18n import LANG_COOKIE, THEME_COOKIE, lang_of, theme_of, translator
 from hub.summary import enforcement_rows, step_of
 from hub.timefmt import fmt_ts
 
@@ -588,12 +588,14 @@ def _render(request: Request, name: str, *, session: dict | None, status_code: i
     templates = request.app.state.templates
     msg_key = request.query_params.get("msg", "")
     lang = lang_of(request, request.app.state.settings.hub_lang)
+    theme = theme_of(request)
     t = translator(lang)
     context.update(
         request=request,
         session=session,
         t=t,
         lang=lang,
+        theme=theme,
         path=request.url.path,
         pillar=_pillar_of(request.url.path),
         msg=t(msg_key) if msg_key else "",
@@ -605,6 +607,8 @@ def _render(request: Request, name: str, *, session: dict | None, status_code: i
     response = templates.TemplateResponse(request, name, context, status_code=status_code)
     if request.query_params.get("lang") == lang:
         response.set_cookie(LANG_COOKIE, lang, max_age=60 * 60 * 24 * 365, samesite="lax")
+    if request.query_params.get("theme") == theme:
+        response.set_cookie(THEME_COOKIE, theme, max_age=60 * 60 * 24 * 365, samesite="lax")
     return response
 
 

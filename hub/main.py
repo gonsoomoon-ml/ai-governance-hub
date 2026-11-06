@@ -16,7 +16,7 @@ from fastapi.templating import Jinja2Templates
 from hub import auth
 from hub.config import Settings
 from hub.gateway_api import GatewayApi
-from hub.i18n import lang_of, translator
+from hub.i18n import lang_of, theme_of, translator
 from hub.routers import resolve, ui
 from hub.store import Store
 
@@ -72,6 +72,7 @@ def create_app(
             "session": session,
             "t": translator(lang),
             "lang": lang,
+            "theme": theme_of(request),
             "path": request.url.path,
             "pillar": "",
             "msg": "",
