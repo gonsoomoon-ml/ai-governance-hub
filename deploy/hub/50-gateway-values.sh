@@ -90,7 +90,7 @@ print(c["image"].rsplit(":", 1)[-1], env.get("POLICY_HUB_URL"), "token-set" if e
 [ "$R" = "$GATEWAY_IMAGE_TAG $HUB_URL token-set" ] || { echo "rendered gateway-proxy does not carry the change: '$R' — $V untouched" >&2; exit 1; }
 
 echo "--- planned change to $(basename "$V") (token redacted) ---"
-diff -u "$V" "$TMP" | sed -n '3,$p' | sed -E 's/(POLICY_HUB_TOKEN: ")[^"]+/\1<redacted>/'
+diff -u "$V" "$TMP" | sed -n '3,$p' | sed -E 's/(POLICY_HUB_TOKEN: ")[^"]+/\1<redacted>/' || true  # diff exits 1 when files differ
 if [ "$APPLY" = 0 ]; then echo; echo "Nothing written. Apply:  GATEWAY_IMAGE_TAG=$GATEWAY_IMAGE_TAG bash $0 --apply"; exit 0; fi
 BAK="$SNAP/$(date +%Y%m%d-%H%M%S)-values-$ENV_NAME-50-gateway.bak"
 cp "$V" "$BAK" && cp "$TMP" "$V"
