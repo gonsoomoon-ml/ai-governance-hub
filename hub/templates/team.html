@@ -31,7 +31,7 @@
       {% if published %}v{{ published.version }} · {{ ts(published.published_at) }} · {{ published.published_by }} <span class="tech" title="{{ published.version_hash }}">{{ published.version_hash[:8] }}</span>
       {% else %}<span class="muted">{{ t("team.no_published") }}</span>{% endif %}
     </div>
-    <div style="margin-top:6px"><a href="/teams/{{ team.team_id }}/preview.json" target="_blank" title="{{ t('tip.preview') }}">{{ t("team.preview") }}</a> <span class="muted">{{ t("team.preview.basis." + preview_basis) }}</span></div>
+    <div style="margin-top:8px">{% with preview_title=t("preview.title.team") ~ " " ~ t("team.preview.basis." + preview_basis) %}{% include "_preview.html" %}{% endwith %}</div>
 
     <div class="actions">
       {% if session.role == "admin" and pending %}

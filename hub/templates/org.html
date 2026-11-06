@@ -25,6 +25,7 @@
       {% if receiving %}{{ receiving | join(" · ") }}{% else %}<span class="muted">{{ t("org.receiving.none") }}</span>{% endif %}</p>
     {% endif %}
     {% with with_models=false %}{% include "_policy_form.html" %}{% endwith %}
+    <div style="margin-top:8px">{% with preview_title=t("preview.title.org") %}{% include "_preview.html" %}{% endwith %}</div>
   </div>
   <div class="actions"><button class="primary">{{ t("org.save") }}</button></div>
 </form>

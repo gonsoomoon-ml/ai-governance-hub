@@ -1,0 +1,21 @@
+{# preview modal: trigger button + <dialog> with the fragment JSON; `preview_title` set by the including page #}
+<button type="button" id="preview-open" class="secondary" onclick="document.getElementById('preview').showModal()">{{ t("team.preview") }}</button>
+<dialog id="preview" aria-labelledby="preview-title" style="max-width:760px;width:92vw;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);color:var(--ink);padding:0">
+  <div style="padding:16px 18px 6px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+    <h2 id="preview-title" style="margin:0">{{ preview_title }}</h2>
+    <span class="tech" title="{{ preview_version }}">{{ preview_version[:8] }}</span>
+  </div>
+  <p class="hint" style="padding:0 18px">{{ t("preview.desc") }}</p>
+  <pre id="preview-json" style="margin:0 18px;max-height:60vh">{{ preview_json }}</pre>
+  <div class="actions" style="padding:12px 18px 16px">
+    <button type="button" id="preview-copy" class="secondary" data-copied="{{ t('preview.copied') }}" onclick="(function(b){navigator.clipboard.writeText(document.getElementById('preview-json').textContent).then(function(){var o=b.textContent;b.textContent=b.dataset.copied;setTimeout(function(){b.textContent=o;},1500);});})(this)">{{ t("preview.copy") }}</button>
+    <a href="{{ preview_href }}" target="_blank" rel="noopener"><button type="button">{{ t("preview.open") }}</button></a>
+    <span class="spacer" style="flex:1"></span>
+    <button type="button" onclick="document.getElementById('preview').close()">{{ t("preview.close") }}</button>
+  </div>
+</dialog>
+<script>
+  (function () { var d = document.getElementById("preview"); if (!d) return;
+    d.addEventListener("click", function (e) { if (e.target === d) d.close(); });  // click outside closes
+  })();
+</script>

@@ -245,6 +245,17 @@ def preview(request: Request, team_id: str) -> Response:
     return JSONResponse({"version": version_of(fragment), "managedSettings": fragment})
 
 
+@router.get("/org/preview.json")
+def org_preview(request: Request) -> Response:
+    """조직 기본 정책(안전망)의 조각과 버전 — 허브가 관리하지 않는 팀의 PC 가 받는 것.
+
+    The fragment and version of the org default policy, which PCs of unmanaged teams receive.
+    """
+    require_admin(request)
+    fragment = _fragment(request, request.app.state.store.org_settings()["default_policy"])
+    return JSONResponse({"version": version_of(fragment), "managedSettings": fragment})
+
+
 @router.get("/pending")
 def pending_page(request: Request) -> Response:
     """승인 대기 목록(관리자).
@@ -463,6 +474,19 @@ def _publish(request: Request, session: dict, team_id: str, doc: dict) -> int:
     return version
 
 
+def _preview_context(request: Request, doc: dict, href: str) -> dict:
+    """미리보기 모달 문맥: 조각 JSON(들여쓰기)·버전·새 창 링크.
+
+    Preview modal context: the fragment as indented JSON, its version, and the new-tab link.
+    """
+    fragment = _fragment(request, doc)
+    return {
+        "preview_json": json.dumps(fragment, ensure_ascii=False, indent=2),
+        "preview_version": version_of(fragment),
+        "preview_href": href,
+    }
+
+
 def _fragment(request: Request, doc: dict) -> dict:
     """설정값·카탈로그를 붙여 조각을 만든다.
 
@@ -509,6 +533,7 @@ def _render_editor(
     preview_basis = "draft" if draft else ("published" if published else "empty")
     enforcement = enforcement_rows(doc, org, t)
     step = step_of(draft, published)
+    preview = _preview_context(request, doc, f"/teams/{team_id}/preview.json")
     return _render(
         request,
         "team.html",
@@ -521,6 +546,7 @@ def _render_editor(
         preview_basis=preview_basis,
         enforcement=enforcement,
         step=step,
+        **preview,
         models=models,
         models_error=models_error,
         catalog=store.list_agents(),
@@ -551,6 +577,7 @@ def _render_org(
         org=org,
         doc=doc,
         receiving=_teams_receiving_default(request),
+        **_preview_context(request, doc, "/org/preview.json"),
         catalog=store.list_agents(),
         errors=errors or [],
         lock_choices=LOCK_CHOICES,
