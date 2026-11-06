@@ -5,11 +5,12 @@
 <form method="post" action="/org">
   <fieldset>
     <legend>{{ t("org.locks") }}</legend>
+    <p class="hint">{{ t("org.locks.hint") }}</p>
     {% for key, choices in lock_choices.items() %}
     <div><strong>{{ t("lock." + key) }}</strong>
       <label class="inline"><input type="radio" name="fixed_{{ key }}" value="" {% if not org.locks_fixed.get(key) %}checked{% endif %}> {{ t("org.team_decides") }}</label>
       {% for c in choices %}
-      <label class="inline"><input type="radio" name="fixed_{{ key }}" value="{{ c }}" {% if org.locks_fixed.get(key) == c %}checked{% endif %}> {{ t("lock." + key + "." + c) }}</label>
+      <label class="inline"><input type="radio" name="fixed_{{ key }}" value="{{ c }}" {% if org.locks_fixed.get(key) == c %}checked{% endif %}> {{ t("org.fixed_prefix") }} {{ t("lock." + key + "." + c) }}</label>
       {% endfor %}
     </div>
     {% endfor %}
