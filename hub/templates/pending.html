@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>{{ t("pending.title") }}</h1>
+<p class="intro">{{ t("intro.pending") }}</p>
 {% if rows %}
 <table>
   <tr><th>{{ t("teams.col.team") }}</th><th>{{ t("team.submitted_by") }}</th><th></th></tr>

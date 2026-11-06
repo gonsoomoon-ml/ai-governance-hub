@@ -23,6 +23,8 @@ from hub.auth import current_session, require_admin, require_session, require_te
 from hub.diff import policy_diff
 from hub.fragment import LOCK_CHOICES, STRICT_DEFAULTS, build_fragment, empty_policy, validate_policy, version_of
 from hub.gateway_api import GatewayApiError
+from hub.i18n import LANG_COOKIE, lang_of, translator
+from hub.summary import policy_summary, step_of
 from hub.timefmt import fmt_ts
 
 router = APIRouter()
@@ -302,7 +304,7 @@ def agents_page(request: Request) -> Response:
     agentcore = request.app.state.agentcore
     records, error = [], ""
     if agentcore is None:
-        error = request.app.state.t("agents.not_configured")
+        error = _t(request)("agents.not_configured")
     else:
         try:
             records = agentcore.list_records()
@@ -364,6 +366,16 @@ def agents_reject(request: Request, name: str, reason: str = Form("")) -> Respon
     request.app.state.store.put_agents(agentcore.approved_catalog())
     request.app.state.store.audit("agent_rejected", actor=session["email"], detail={"name": name, "reason": reason})
     return RedirectResponse("/agents?msg=msg.agents_refreshed", status_code=302)
+
+
+@router.get("/help")
+def help_page(request: Request) -> Response:
+    """도움말(용어·흐름·역할·FAQ). 로그인한 누구나.
+
+    Help page (terms, flow, roles, FAQ) for any signed-in user.
+    """
+    session = require_session(request)
+    return _render(request, "help.html", session=session)
 
 
 @router.get("/audit")
@@ -488,9 +500,12 @@ def _render_editor(
     for alias in doc.get("models") or []:  # keep a draft's aliases visible even if admin-api is down
         if alias not in known:
             models.append({"alias": alias, "display_name": alias})
-    t = request.app.state.t
+    t = _t(request)
+    org = store.org_settings()
     changes = policy_diff((published or {}).get("doc"), draft["doc"], t) if draft else []
     preview_basis = "draft" if draft else ("published" if published else "empty")
+    summary = policy_summary(doc, org, t)
+    step = step_of(draft, published)
     return _render(
         request,
         "team.html",
@@ -501,10 +516,12 @@ def _render_editor(
         published=published,
         changes=changes,
         preview_basis=preview_basis,
+        summary=summary,
+        step=step,
         models=models,
         models_error=models_error,
         catalog=store.list_agents(),
-        org=store.org_settings(),
+        org=org,
         versions=store.list_versions(team_id),
         errors=errors or [],
         lock_choices=LOCK_CHOICES,
@@ -568,17 +585,32 @@ def _render(request: Request, name: str, *, session: dict | None, status_code: i
     """
     templates = request.app.state.templates
     msg_key = request.query_params.get("msg", "")
+    lang = lang_of(request, request.app.state.settings.hub_lang)
+    t = translator(lang)
     context.update(
         request=request,
         session=session,
-        t=request.app.state.t,
-        msg=request.app.state.t(msg_key) if msg_key else "",
+        t=t,
+        lang=lang,
+        path=request.url.path,
+        msg=t(msg_key) if msg_key else "",
         json_dumps=lambda v: json.dumps(v, ensure_ascii=False, indent=2),
         json_dumps_line=lambda v: json.dumps(v, ensure_ascii=False),
         lock_defaults=STRICT_DEFAULTS,
         ts=_ts_filter(request.app.state.settings.hub_tz),
     )
-    return templates.TemplateResponse(request, name, context, status_code=status_code)
+    response = templates.TemplateResponse(request, name, context, status_code=status_code)
+    if request.query_params.get("lang") == lang:
+        response.set_cookie(LANG_COOKIE, lang, max_age=60 * 60 * 24 * 365, samesite="lax")
+    return response
+
+
+def _t(request: Request):
+    """요청 언어의 문구 함수.
+
+    The string function for the request's language.
+    """
+    return translator(lang_of(request, request.app.state.settings.hub_lang))
 
 
 def _ts_filter(zone_name: str):

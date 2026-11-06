@@ -1,43 +1,82 @@
 <!doctype html>
-<html lang="ko">
+<html lang="{{ lang }}">
 <head>
 <meta charset="utf-8">
 <title>{{ t("app") }}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  :root { --ink:#1a1a1a; --muted:#666; --line:#ddd; --accent:#0b5fff; --bad:#b00020; --ok:#1b7f3b; --bg:#fafafa; }
-  body { font-family: -apple-system, "Segoe UI", "Noto Sans KR", sans-serif; color: var(--ink); margin: 0; background: var(--bg); }
-  header { background: #fff; border-bottom: 1px solid var(--line); padding: 10px 24px; display: flex; gap: 20px; align-items: center; }
+  :root { --ink:#1a1a1a; --muted:#5f6368; --line:#dcdfe3; --accent:#0b5fff; --accent-dark:#0847c4; --bad:#b00020; --ok:#1b7f3b; --warn:#9a6700; --bg:#f6f7f9; --card:#fff; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; font-size: 16px; line-height: 1.5; color: var(--ink); margin: 0; background: var(--bg); }
+  a { color: var(--accent); }
+  header { background: var(--card); border-bottom: 1px solid var(--line); padding: 10px 24px; display: flex; gap: 20px; align-items: center; }
   header .brand { font-weight: 700; }
-  header nav a { margin-right: 14px; color: var(--ink); text-decoration: none; }
+  header nav a { margin-right: 14px; color: var(--ink); text-decoration: none; padding: 4px 0; border-bottom: 2px solid transparent; }
   header nav a:hover { color: var(--accent); }
+  header nav a.active { font-weight: 700; border-bottom-color: var(--accent); }
   header .who { margin-left: auto; color: var(--muted); font-size: 0.9em; display: flex; gap: 10px; align-items: center; }
-  main { max-width: 1040px; margin: 24px auto; padding: 0 24px; }
-  h1 { font-size: 1.4em; margin: 0 0 16px; }
-  h2 { font-size: 1.1em; margin: 24px 0 8px; }
-  table { border-collapse: collapse; width: 100%; background: #fff; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { color: var(--muted); font-weight: 600; font-size: 0.9em; }
-  .card { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 16px; margin-bottom: 16px; }
-  .msg { background: #e8f1ff; border: 1px solid #b7d0ff; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
-  .warn { background: #fff3cd; border: 1px solid #ffe08a; padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; }
-  .err { background: #fdecee; border: 1px solid #f3b9c0; color: var(--bad); padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
+  header .lang { font-size: 0.85em; color: var(--muted); } header .lang a { color: var(--muted); text-decoration: none; } header .lang a.on { color: var(--ink); font-weight: 700; }
+  main { max-width: 1120px; margin: 24px auto; padding: 0 24px; }
+  h1 { font-size: 1.6em; font-weight: 700; margin: 0 0 6px; }
+  h2 { font-size: 1.15em; font-weight: 600; margin: 24px 0 8px; }
+  .intro { color: var(--muted); margin: 0 0 18px; max-width: 900px; }
+  .hint { color: var(--muted); font-size: 0.9em; margin: 2px 0 10px; }
   .muted { color: var(--muted); }
-  .hint { color: var(--muted); font-size: 0.9em; margin: 0.2em 0 0.6em; }
-  .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.85em; background: #eee; }
-  .pill.pending { background: #fff3cd; } .pill.published { background: #d9f2e1; } .pill.rejected { background: #fdecee; }
+  code, .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.9em; }
+  .tech { color: var(--muted); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.8em; }
+  table { border-collapse: collapse; width: 100%; background: var(--card); }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: #3c4043; font-weight: 600; font-size: 0.85em; background: #f1f3f5; }
+  tbody tr:nth-child(even) td, table tr:nth-child(even) td { background: #fafbfc; }
+  table tr:hover td { background: #f0f5ff; }
+  td.right, th.right { text-align: right; }
+  .table-wrap { overflow-x: auto; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .card h2 { margin-top: 0; }
+  .card.status { border-left: 5px solid var(--line); }
+  .card.status.draft { border-left-color: var(--accent); } .card.status.pending { border-left-color: #e3b341; }
+  .card.status.published { border-left-color: var(--ok); } .card.status.rejected { border-left-color: var(--bad); }
+  .msg { background: #e6f4ea; border: 1px solid #b7e1c1; color: #14532d; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
+  .warn { background: #fff8e1; border: 1px solid #ffe08a; color: #5c4300; padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; }
+  .err { background: #fdecee; border: 1px solid #f3b9c0; color: var(--bad); padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 0.85em; background: #e8eaed; color: #3c4043; white-space: nowrap; }
+  .pill.draft { background: #e3eefe; color: #0b3d91; } .pill.pending { background: #fff3cd; color: #5c4300; }
+  .pill.published { background: #d9f2e1; color: #14532d; } .pill.rejected { background: #fdecee; color: var(--bad); }
   label { display: block; margin: 6px 0; }
-  input[type=text], textarea { width: 100%; max-width: 640px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px; font: inherit; }
-  textarea { min-height: 70px; font-family: ui-monospace, Menlo, monospace; }
-  fieldset { border: 1px solid var(--line); border-radius: 6px; margin: 12px 0; padding: 10px 14px; }
-  legend { color: var(--muted); font-size: 0.9em; }
-  button { font: inherit; padding: 7px 14px; border-radius: 4px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
-  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-  button.danger { color: var(--bad); }
+  input[type=text], textarea, select { width: 100%; max-width: 640px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: var(--card); }
+  input[type=text]:focus, textarea:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  textarea { min-height: 72px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.95em; }
+  fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 14px 0; padding: 12px 16px 14px; background: var(--card); }
+  legend { color: var(--ink); font-weight: 600; font-size: 1.05em; padding: 0 6px; }
+  .choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2px 16px; }
+  .choices label { margin: 3px 0; }
+  .lockrow { display: grid; grid-template-columns: 220px 1fr; gap: 6px 16px; padding: 8px 0; border-top: 1px dashed var(--line); align-items: start; }
+  .lockrow:first-of-type { border-top: 0; }
+  .lockrow .lockname { font-weight: 600; }
+  .lockrow .lockopts label { display: inline-block; margin: 2px 16px 2px 0; }
+  button { font: inherit; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); cursor: pointer; color: var(--ink); }
+  button:hover { border-color: #b9bec5; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+  button.primary:hover { background: var(--accent-dark); }
+  button.secondary { background: var(--card); color: var(--accent); border-color: var(--accent); }
+  button.danger { color: var(--bad); border-color: #f3b9c0; background: var(--card); }
+  button.danger:hover { background: #fdecee; }
+  form.busy button { opacity: 0.6; pointer-events: none; }
   .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
   .actions form { display: inline; }
-  pre { background: #f4f4f4; padding: 12px; border-radius: 6px; overflow: auto; font-size: 0.85em; }
+  .actions .spacer { flex: 1; }
+  pre { background: #f1f3f5; padding: 12px; border-radius: 6px; overflow: auto; font-size: 0.9em; }
   .inline { display: inline-block; margin-right: 16px; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; align-items: start; }
+  .layout aside { position: sticky; top: 16px; }
+  @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } .layout aside { position: static; } .lockrow { grid-template-columns: 1fr; } }
+  ol.steps { list-style: none; padding: 0; margin: 0 0 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  ol.steps .step { padding: 5px 10px; border-radius: 6px; background: #eef0f3; color: var(--muted); font-size: 0.9em; }
+  ol.steps .step.current { background: var(--accent); color: #fff; font-weight: 600; }
+  ol.steps .step.done { background: #d9f2e1; color: #14532d; }
+  .back { display: inline-block; margin-bottom: 8px; text-decoration: none; }
+  details summary { cursor: pointer; }
+  dl.terms dt { font-weight: 600; margin-top: 10px; } dl.terms dd { margin: 2px 0 0 0; color: #3c4043; }
 </style>
 </head>
 <body>
@@ -45,21 +84,32 @@
   <span class="brand">{{ t("app") }}</span>
   {% if session %}
   <nav>
-    <a href="/teams">{{ t("nav.teams") }}</a>
+    <a{% if path.startswith("/teams") %} class="active"{% endif %} href="/teams">{{ t("nav.teams") }}</a>
     {% if session.role == "admin" %}
-    <a href="/pending">{{ t("nav.pending") }}</a>
-    <a href="/org">{{ t("nav.org") }}</a>
-    <a href="/agents">{{ t("nav.agents") }}</a>
-    <a href="/audit">{{ t("nav.audit") }}</a>
+    <a{% if path.startswith("/pending") %} class="active"{% endif %} href="/pending">{{ t("nav.pending") }}</a>
+    <a{% if path.startswith("/org") %} class="active"{% endif %} href="/org">{{ t("nav.org") }}</a>
+    <a{% if path.startswith("/agents") %} class="active"{% endif %} href="/agents">{{ t("nav.agents") }}</a>
+    <a{% if path.startswith("/audit") %} class="active"{% endif %} href="/audit">{{ t("nav.audit") }}</a>
     {% endif %}
+    <a{% if path.startswith("/help") %} class="active"{% endif %} href="/help">{{ t("nav.help") }}</a>
   </nav>
-  <span class="who">{{ session.email }} · {{ t("role." + session.role) }}
+  <span class="who">{{ session.email }} · <span title="{{ t('role.' + session.role + '.tip') }}">{{ t("role." + session.role) }}</span>
     <form method="post" action="/auth/logout"><button>{{ t("nav.logout") }}</button></form></span>
   {% endif %}
+  <span class="lang"{% if not session %} style="margin-left:auto"{% endif %}><a href="{{ path }}?lang=ko"{% if lang == "ko" %} class="on"{% endif %}>{{ t("lang.ko") }}</a> | <a href="{{ path }}?lang=en"{% if lang == "en" %} class="on"{% endif %}>{{ t("lang.en") }}</a></span>
 </header>
 <main>
-  {% if msg %}<div class="msg">{{ msg }}</div>{% endif %}
+  {% if msg %}<div class="msg" role="status" aria-live="polite">{{ msg }}</div>{% endif %}
   {% block content %}{% endblock %}
 </main>
+<script>
+  // One submit at a time: the form gets .busy and buttons with data-busy show their waiting text.
+  document.addEventListener("submit", function (e) {
+    var f = e.target;
+    if (f.dataset.submitted) { e.preventDefault(); return; }
+    f.dataset.submitted = "1"; f.classList.add("busy");
+    var b = e.submitter; if (b && b.dataset.busy) { setTimeout(function () { b.textContent = b.dataset.busy; }, 0); }
+  });
+</script>
 </body>
 </html>

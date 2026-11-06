@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>{{ t("audit.title") }}</h1>
+<p class="intro">{{ t("intro.audit") }}</p>
 <table>
   <tr><th>{{ t("audit.col.at") }}</th><th>{{ t("audit.col.actor") }}</th><th>{{ t("audit.col.action") }}</th><th>{{ t("audit.col.team") }}</th><th>{{ t("audit.col.detail") }}</th></tr>
   {% for e in entries %}

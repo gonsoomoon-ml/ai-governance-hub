@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>{{ t("agents.title") }}</h1>
+<p class="intro">{{ t("intro.agents") }}</p>
 {% if error %}<div class="err">{{ error }}</div>{% endif %}
-<p class="hint">{{ t("agents.hint") }}</p>
 <form method="post" action="/agents/refresh" class="actions"><button>{{ t("agents.refresh") }}</button> <span class="muted">{{ t("agents.refresh.hint") }}</span></form>
 {% if records %}
 {% set catalog_names = catalog | map(attribute="name") | list %}
 <table>
-  <tr><th>{{ t("agents.col.name") }}</th><th>{{ t("agents.col.kind") }}</th><th>{{ t("agents.col.tools") }}</th><th>{{ t("agents.col.status") }}</th><th>{{ t("agents.col.selectable") }}</th><th></th></tr>
+  <tr><th>{{ t("agents.col.name") }}</th><th title="{{ t('tip.kind.AGENT') }} / {{ t('tip.kind.MCP') }}">{{ t("agents.col.kind") }}</th><th title="{{ t('tip.col.tools') }}">{{ t("agents.col.tools") }}</th><th title="{{ t('tip.col.status') }}">{{ t("agents.col.status") }}</th><th>{{ t("agents.col.selectable") }}</th><th></th></tr>
   {% for r in records %}
   {% set label = t("agents.status." + r.status) %}
-  <tr><td>{{ r.name }}<br><span class="muted">{{ r.description }}</span></td><td>{{ r.kind }}</td><td>{{ r.tools | join(", ") }}</td>
+  <tr><td>{{ r.name }}<br><span class="muted">{{ r.description }}</span></td><td title="{{ t('tip.kind.' + r.kind) if t('tip.kind.' + r.kind) != 'tip.kind.' + r.kind else '' }}">{{ r.kind }}</td><td>{{ r.tools | join(", ") }}</td>
       <td><span class="pill {{ 'published' if r.status == 'APPROVED' else ('pending' if r.status == 'PENDING_APPROVAL' else ('rejected' if r.status == 'REJECTED' else '')) }}">{{ r.status if label.startswith("agents.status.") else label }}</span></td>
       <td>{{ t("yes") if r.name in catalog_names else t("no") }}</td>
       <td>{% if r.status != "APPROVED" %}<form method="post" action="/agents/{{ r.name }}/approve"><button class="primary">{{ t("agents.approve") }}</button></form>{% endif %}

@@ -86,7 +86,7 @@ def test_pending_draft_shows_a_warning_and_relabels_save(client, settings, store
 
     assert "저장하면 승인 요청이 취소되고" in page
     assert "저장(승인 요청 취소)" in page
-    assert "저장 후 승인 요청" not in page
+    assert 'name="action" value="submit"' not in page  # the submit button is hidden while pending
 
 
 def test_lock_radios_default_to_the_strict_value_when_unset(client, settings, store):

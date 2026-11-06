@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ t("help.title") }}</h1>
+<p class="intro">{{ t("intro.help") }}</p>
+
+<div class="card">
+  <h2>{{ t("help.flow.title") }}</h2>
+  <ol>
+    <li>{{ t("help.flow.1") }}</li>
+    <li>{{ t("help.flow.2") }}</li>
+    <li>{{ t("help.flow.3") }}</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h2>{{ t("help.terms.title") }}</h2>
+  <dl class="terms">
+    {% for key in ("models", "marketplace", "plugins", "mcp", "agents", "locks", "fixed", "default", "status", "version", "gateway", "registry") %}
+    {% set line = t("help.term." + key) %}
+    <dt>{{ line.split(" — ")[0] }}</dt><dd>{{ line.split(" — ", 1)[1] if " — " in line else line }}</dd>
+    {% endfor %}
+  </dl>
+</div>
+
+<div class="card">
+  <h2>{{ t("help.roles.title") }}</h2>
+  <ul>
+    <li>{{ t("help.roles.admin") }}</li>
+    <li>{{ t("help.roles.leader") }}</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>{{ t("help.faq.title") }}</h2>
+  <dl class="terms">
+    {% for n in ("1", "2", "3") %}
+    <dt>{{ t("help.faq." + n + ".q") }}</dt><dd>{{ t("help.faq." + n + ".a") }}</dd>
+    {% endfor %}
+  </dl>
+</div>
+{% endblock %}

@@ -16,7 +16,7 @@ from fastapi.templating import Jinja2Templates
 from hub import auth
 from hub.config import Settings
 from hub.gateway_api import GatewayApi
-from hub.i18n import translator
+from hub.i18n import lang_of, translator
 from hub.routers import resolve, ui
 from hub.store import Store
 
@@ -66,10 +66,13 @@ def create_app(
         if exc.status_code != 403 or request.url.path.startswith("/v1/"):
             return await http_exception_handler(request, exc)
         session = auth.current_session(request)
+        lang = lang_of(request, request.app.state.settings.hub_lang)
         context = {
             "request": request,
             "session": session,
-            "t": request.app.state.t,
+            "t": translator(lang),
+            "lang": lang,
+            "path": request.url.path,
             "msg": "",
             "detail": str(exc.detail),
         }
