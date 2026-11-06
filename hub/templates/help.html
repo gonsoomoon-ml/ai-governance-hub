@@ -3,7 +3,7 @@
 <h1>{{ t("help.title") }}</h1>
 <p class="intro">{{ t("intro.help") }}</p>
 
-<div class="card">
+<div class="card p1">
   <h2>{{ t("help.flow.title") }}</h2>
   <ol>
     <li>{{ t("help.flow.1") }}</li>
@@ -13,13 +13,26 @@
 </div>
 
 <div class="card">
-  <h2>{{ t("help.terms.title") }}</h2>
-  <dl class="terms">
-    {% for key in ("models", "marketplace", "plugins", "mcp", "agents", "locks", "fixed", "default", "status", "version", "gateway", "registry") %}
-    {% set line = t("help.term." + key) %}
-    <dt>{{ line.split(" — ")[0] }}</dt><dd>{{ line.split(" — ", 1)[1] if " — " in line else line }}</dd>
+  <h2>{{ t("help.gloss.title") }}</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>{{ t("help.gloss.col.concept") }}</th><th>{{ t("help.gloss.col.system") }}</th><th>{{ t("help.gloss.col.role") }}</th></tr>
+    {% for n in range(1, 13) %}
+    {% set parts = t("help.gloss." ~ n).split(" | ") %}
+    <tr><td><strong>{{ parts[0] }}</strong></td><td class="mono">{{ parts[1] if parts | length > 1 else "" }}</td><td>{{ parts[2] if parts | length > 2 else "" }}</td></tr>
     {% endfor %}
-  </dl>
+  </table>
+  </div>
+  <p class="hint" style="margin-top:8px">{{ t("help.gloss.abbr") }}</p>
+</div>
+
+<div class="card p2">
+  <h2>{{ t("help.rollout.title") }}</h2>
+  <ol>
+    <li>{{ t("help.rollout.1") }}</li>
+    <li><strong>{{ t("help.rollout.2") }}</strong></li>
+    <li>{{ t("help.rollout.3") }}</li>
+  </ol>
 </div>
 
 <div class="card">
@@ -37,5 +50,6 @@
     <dt>{{ t("help.faq." + n + ".q") }}</dt><dd>{{ t("help.faq." + n + ".a") }}</dd>
     {% endfor %}
   </dl>
+  <p><a href="{{ t('help.deck.url') }}" target="_blank" rel="noopener">{{ t("help.deck") }}</a></p>
 </div>
 {% endblock %}

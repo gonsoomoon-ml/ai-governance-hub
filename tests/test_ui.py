@@ -68,9 +68,10 @@ def test_leader_sees_only_own_teams(client, settings, store):
     managed(store, OTHER_TEAM, "mobile")
     login_as(client, settings, email=LEADER_EMAIL, role="leader", teams=[TEAM])
 
-    page = client.get("/teams")
-    assert "platform" in page.text and "mobile" not in page.text
-    assert client.get(f"/teams/{TEAM}").status_code == 200
+    listing = client.get("/teams")  # one team -> straight to it (0.1.4)
+    assert listing.status_code == 302 and listing.headers["location"] == f"/teams/{TEAM}"
+    page = client.get(f"/teams/{TEAM}")
+    assert page.status_code == 200 and "platform" in page.text and "mobile" not in page.text
     assert client.get(f"/teams/{OTHER_TEAM}").status_code == 403
     assert client.get("/pending").status_code == 403
     assert client.get("/org").status_code == 403

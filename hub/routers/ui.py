@@ -24,7 +24,7 @@ from hub.diff import policy_diff
 from hub.fragment import LOCK_CHOICES, STRICT_DEFAULTS, build_fragment, empty_policy, validate_policy, version_of
 from hub.gateway_api import GatewayApiError
 from hub.i18n import LANG_COOKIE, lang_of, translator
-from hub.summary import policy_summary, step_of
+from hub.summary import enforcement_rows, step_of
 from hub.timefmt import fmt_ts
 
 router = APIRouter()
@@ -65,6 +65,8 @@ def teams_page(request: Request) -> Response:
     teams = store.list_teams()
     if session["role"] != "admin":
         teams = [t for t in teams if t["team_id"] in session["teams"]]
+        if len(teams) == 1:  # a leader of one team goes straight to it
+            return RedirectResponse(f"/teams/{teams[0]['team_id']}", status_code=302)
     rows = [
         {
             **t,
@@ -504,7 +506,7 @@ def _render_editor(
     org = store.org_settings()
     changes = policy_diff((published or {}).get("doc"), draft["doc"], t) if draft else []
     preview_basis = "draft" if draft else ("published" if published else "empty")
-    summary = policy_summary(doc, org, t)
+    enforcement = enforcement_rows(doc, org, t)
     step = step_of(draft, published)
     return _render(
         request,
@@ -516,7 +518,7 @@ def _render_editor(
         published=published,
         changes=changes,
         preview_basis=preview_basis,
-        summary=summary,
+        enforcement=enforcement,
         step=step,
         models=models,
         models_error=models_error,
@@ -593,6 +595,7 @@ def _render(request: Request, name: str, *, session: dict | None, status_code: i
         t=t,
         lang=lang,
         path=request.url.path,
+        pillar=_pillar_of(request.url.path),
         msg=t(msg_key) if msg_key else "",
         json_dumps=lambda v: json.dumps(v, ensure_ascii=False, indent=2),
         json_dumps_line=lambda v: json.dumps(v, ensure_ascii=False),
@@ -603,6 +606,18 @@ def _render(request: Request, name: str, *, session: dict | None, status_code: i
     if request.query_params.get("lang") == lang:
         response.set_cookie(LANG_COOKIE, lang, max_age=60 * 60 * 24 * 365, samesite="lax")
     return response
+
+
+def _pillar_of(path: str) -> str:
+    """경로 -> 덱의 기둥 칩: 정책 화면은 p1(AI 거버넌스), 사내 에이전트는 p2(공유), 그 밖은 없음.
+
+    Path -> deck pillar chip: policy pages p1 (AI governance), agents p2 (sharing), none otherwise.
+    """
+    if path.startswith(("/teams", "/pending", "/org")):
+        return "p1"
+    if path.startswith("/agents"):
+        return "p2"
+    return ""
 
 
 def _t(request: Request):

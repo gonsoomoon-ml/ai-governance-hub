@@ -51,7 +51,7 @@ def test_help_page_is_open_to_leaders_and_linked_from_the_header(client, setting
     assert page.status_code == 200
     for term in ("허용 모델", "플러그인 저장소", "MCP", "잠금", "발행", "안전망", "게이트웨이"):
         assert term in page.text, term
-    assert 'href="/help"' in client.get("/teams").text
+    assert 'href="/help"' in client.get(f"/teams/{TEAM}").text
 
 
 def test_team_page_shows_progress_summary_back_link_and_two_columns(client, settings, store):
@@ -66,7 +66,7 @@ def test_team_page_shows_progress_summary_back_link_and_two_columns(client, sett
 
     assert page.count('class="step current"') == 1
     assert "① 규칙 입력" in page and "④ PC 적용" in page
-    assert "발행되면 PC 에서 일어나는 일" in page
+    assert "어디에서 막히나" in page
     assert "← 팀 목록" in page
     assert 'class="layout"' in page and "<aside" in page
     assert "처리 중" in page

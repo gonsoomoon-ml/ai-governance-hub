@@ -132,7 +132,7 @@ def test_org_fixed_locks_are_read_only_in_the_default_policy(client, settings, s
 
     page = client.get("/org").text
 
-    assert '<span class="pill">조직 고정: 막음</span>' in page
+    assert 'class="pill" title=' in page and "조직 고정: 막음</span>" in page
     assert 'name="lock_personal_customization" value="allow"' not in page
     assert 'name="lock_plugin_sources" value="company_only"' in page
 

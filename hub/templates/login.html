@@ -1,9 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card" style="max-width:480px;margin:60px auto;text-align:center">
-  <h1>{{ t("login.title") }}</h1>
-  <p class="intro">{{ t("intro.login") }}</p>
-  <p class="muted">{{ t("login.hint") }}</p>
-  <a href="/auth/login"><button class="primary">{{ t("login.button") }}</button></a>
+<div class="cover">
+  <span class="chip p1">{{ t("chip.p1") }}</span> <span class="chip p2">{{ t("chip.p2") }}</span>
+  <p class="q"><span class="c1">{{ t("cover.q1") }}</span><br><span class="c2">{{ t("cover.q2") }}</span><br><span class="c2">{{ t("cover.q3") }}</span></p>
+  <p class="a"><b class="c1">{{ t("cover.a1") }}</b> <b class="c2">{{ t("cover.a2") }}</b></p>
+  <div class="card">
+    <h1 style="margin-bottom:8px">{{ t("login.title") }}</h1>
+    <p class="intro">{{ t("intro.login") }}</p>
+    <p class="muted">{{ t("login.hint") }}</p>
+    <a href="/auth/login"><button class="primary">{{ t("login.button") }}</button></a>
+  </div>
 </div>
 {% endblock %}

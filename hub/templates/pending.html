@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>{{ t("pending.title") }}</h1>
+<h1>{{ t("pending.title") }}{% if pillar %} <span class="chip {{ pillar }}">{{ t("chip." + pillar) }}</span>{% endif %}</h1>
 <p class="intro">{{ t("intro.pending") }}</p>
 {% if rows %}
 <table>

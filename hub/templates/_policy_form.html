@@ -1,6 +1,6 @@
 {# shared editor fields; `doc` is the policy document, `with_models` toggles the model block #}
 {% if with_models %}
-<fieldset>
+<fieldset class="p1">
   <legend>{{ t("team.models") }}</legend>
   <p class="hint">{{ t("help.models") }}</p>
   {% if models_error %}<div class="err">{{ t("team.models.error") }}: {{ models_error }}</div>{% endif %}
@@ -20,7 +20,7 @@
   </script>
 </fieldset>
 {% endif %}
-<fieldset>
+<fieldset class="p2">
   <legend>{{ t("team.marketplace") }}</legend>
   <p class="hint">{{ t("help.marketplace") }}</p>
   <label>{{ t("team.marketplace.name") }} <input type="text" name="marketplace_name" placeholder="my-extensions" value="{{ doc.marketplace.name if doc.marketplace else '' }}"></label>
@@ -29,12 +29,12 @@
   <label>{{ t("team.plugins") }} <textarea name="plugins" placeholder="deck-design">{{ plugins_text }}</textarea></label>
   <p class="hint">{{ t("help.plugins") }}</p>
 </fieldset>
-<fieldset>
+<fieldset class="p2">
   <legend>{{ t("team.mcp_servers") }}</legend>
   <p class="hint">{{ t("help.mcp") }}</p>
   <textarea name="mcp_servers" placeholder="deepwiki https://mcp.deepwiki.com/mcp">{{ mcp_text }}</textarea>
 </fieldset>
-<fieldset>
+<fieldset class="p2">
   <legend>{{ t("team.agents") }}</legend>
   <p class="hint">{{ t("help.agents") }}</p>
   {% if catalog %}
@@ -45,15 +45,15 @@
   </div>
   {% else %}<span class="muted">{{ t("team.agents.none") }}</span>{% endif %}
 </fieldset>
-<fieldset>
+<fieldset class="p1">
   <legend>{{ t("team.locks") }}</legend>
   <p class="hint">{{ t("help.locks") }}</p>
   {% for key, choices in lock_choices.items() %}
   {% set fixed = org.locks_fixed.get(key) if org else none %}
   <div class="lockrow">
-    <div class="lockname">{{ t("lock." + key) }}</div>
+    <div class="lockname" title="{{ t('lock.keys.prefix') }} {{ t('lock.' + key + '.keys') }}">{{ t("lock." + key) }}<br><span class="tech">{{ t("lock." + key + ".keys") }}</span></div>
     <div class="lockopts">
-    {% if fixed %}<span class="pill">{{ t("team.locks.fixed") }}: {{ t("lock." + key + "." + fixed) }}</span><input type="hidden" name="lock_{{ key }}" value="{{ fixed }}">
+    {% if fixed %}<span class="pill" title="{{ t('lock.fixed.tip') }}">{{ t("team.locks.fixed") }}: {{ t("lock." + key + "." + fixed) }}</span> <span class="muted">{{ t("lock.fixed.tip") }}</span><input type="hidden" name="lock_{{ key }}" value="{{ fixed }}">
     {% else %}
       {% for c in choices %}
       <label><input type="radio" name="lock_{{ key }}" value="{{ c }}" {% if (doc.locks or {}).get(key, lock_defaults[key]) == c %}checked{% endif %}> {{ t("lock." + key + "." + c) }}{% if c == lock_defaults[key] %} <span class="muted">{{ t("lock.default_marker") }}</span>{% endif %}</label>

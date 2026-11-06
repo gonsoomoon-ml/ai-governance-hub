@@ -73,6 +73,7 @@ def create_app(
             "t": translator(lang),
             "lang": lang,
             "path": request.url.path,
+            "pillar": "",
             "msg": "",
             "detail": str(exc.detail),
         }

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>{{ t("org.title") }}</h1>
+<h1>{{ t("org.title") }}{% if pillar %} <span class="chip {{ pillar }}">{{ t("chip." + pillar) }}</span>{% endif %}</h1>
 <p class="intro">{{ t("intro.org") }}</p>
 {% if errors %}<div class="err"><strong>{{ t("team.errors") }}</strong><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
 <form method="post" action="/org">

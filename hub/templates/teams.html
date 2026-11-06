@@ -1,7 +1,19 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>{{ t("teams.title") }}</h1>
+<h1>{{ t("teams.title.leader") if session.role != "admin" else t("teams.title") }}{% if pillar %} <span class="chip {{ pillar }}">{{ t("chip." + pillar) }}</span>{% endif %}</h1>
 <p class="intro">{{ t("intro.teams") }}</p>
+
+<div class="card p1">
+  <strong>{{ t("landing.title") }}</strong> <span class="muted">{{ t("landing.body") }}</span>
+  <div class="points">
+    <span class="point p1">{{ t("landing.point.gateway") }}</span>
+    <span class="point p2">{{ t("landing.point.toolgw") }}</span>
+    <span class="point p1">{{ t("landing.point.pc") }}</span>
+    <span class="point dashed">{{ t("landing.point.proxy") }} · {{ t("landing.design_stage") }}</span>
+  </div>
+  <div class="hint" style="margin:4px 0 0">{{ t("landing.legend") }}</div>
+</div>
+
 {% if rows %}
 <div class="table-wrap">
 <table>

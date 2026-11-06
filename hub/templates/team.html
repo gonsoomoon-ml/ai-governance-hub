@@ -3,8 +3,8 @@
 {% set pending = draft and draft.status == "pending" %}
 {% set status = draft.status if draft else "none" %}
 <a class="back" href="/teams">{{ t("team.back") }}</a>
-<h1>{{ t("team.title") }}: {{ team.dept }} / {{ team.name }}</h1>
-<p class="intro">{{ t("intro.team") }}</p>
+<h1>{{ t("team.title") }}: {{ team.dept }} / {{ team.name }}{% if pillar %} <span class="chip {{ pillar }}">{{ t("chip." + pillar) }}</span>{% endif %}</h1>
+<p class="intro">{{ t("intro.team.leader") if session.role != "admin" else t("intro.team") }}</p>
 {% if errors %}<div class="err"><strong>{{ t("team.errors") }}</strong><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
 
 <ol class="steps">
@@ -54,9 +54,17 @@
   </div>
   {% endif %}
 
-  <div class="card">
-    <h2>{{ t("summary.title") }}</h2>
-    <ul>{% for line in summary %}<li>{{ line }}</li>{% endfor %}</ul>
+  <div class="card p1">
+    <h2>{{ t("enf.title") }}</h2>
+    <div class="table-wrap">
+    <table>
+      <tr><th>{{ t("enf.col.item") }}</th><th>{{ t("enf.col.value") }}</th><th>{{ t("enf.col.server") }}</th><th>{{ t("enf.col.pc") }}</th><th>{{ t("enf.col.when") }}</th></tr>
+      {% for r in enforcement %}
+      <tr{% if r.design_stage %} class="dashed"{% endif %}><td><strong>{{ r.label }}</strong></td><td>{{ r.value }}</td><td>{{ r.server }}</td><td>{{ r.pc }}</td><td>{{ r.when }}</td></tr>
+      {% endfor %}
+    </table>
+    </div>
+    <div class="hint" style="margin:6px 0 0">{{ t("landing.legend") }}</div>
   </div>
 </aside>
 </div>
