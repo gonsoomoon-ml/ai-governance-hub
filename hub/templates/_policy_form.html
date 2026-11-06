@@ -47,13 +47,13 @@
 </fieldset>
 <fieldset class="p1">
   <legend>{{ t("team.locks") }}</legend>
-  <p class="hint">{{ t("help.locks") }}</p>
+  <p class="hint">{{ t("help.locks") }}{% if org and (org.locks_fixed.values() | select | list) %} {{ t("lock.fixed.tip") }}.{% endif %}</p>
   {% for key, choices in lock_choices.items() %}
   {% set fixed = org.locks_fixed.get(key) if org else none %}
   <div class="lockrow">
-    <div class="lockname" title="{{ t('lock.keys.prefix') }} {{ t('lock.' + key + '.keys') }}">{{ t("lock." + key) }}<br><span class="tech">{{ t("lock." + key + ".keys") }}</span></div>
+    <div class="lockname">{{ t("lock." + key) }}<br><span class="tech">{{ t("lock." + key + ".keys") }}</span></div>
     <div class="lockopts">
-    {% if fixed %}<span class="pill" title="{{ t('lock.fixed.tip') }}">{{ t("team.locks.fixed") }}: {{ t("lock." + key + "." + fixed) }}</span> <span class="muted">{{ t("lock.fixed.tip") }}</span><input type="hidden" name="lock_{{ key }}" value="{{ fixed }}">
+    {% if fixed %}<span class="pill" title="{{ t('lock.fixed.tip') }}">{{ t("team.locks.fixed") }}: {{ t("lock." + key + "." + fixed) }}</span><input type="hidden" name="lock_{{ key }}" value="{{ fixed }}">
     {% else %}
       {% for c in choices %}
       <label><input type="radio" name="lock_{{ key }}" value="{{ c }}" {% if (doc.locks or {}).get(key, lock_defaults[key]) == c %}checked{% endif %}> {{ t("lock." + key + "." + c) }}{% if c == lock_defaults[key] %} <span class="muted">{{ t("lock.default_marker") }}</span>{% endif %}</label>
