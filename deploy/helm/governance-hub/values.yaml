@@ -25,7 +25,7 @@ env:
   AWS_REGION: "us-west-2"
   DDB_TABLE: "ai-governance-hub"
   # LLM gateway admin-api over in-cluster DNS (no VPN needed)
-  ADMIN_API_URL: "http://llm-gateway-admin-api.llm-gateway.svc:8000"
+  ADMIN_API_URL: "http://llm-gateway-admin-api.llm-gateway.svc:8080"
   # Cognito (same pool as the gateway; the hub callback is registered on the CLI/admin-ui app client)
   OIDC_ISSUER: "https://cognito-idp.us-west-2.amazonaws.com/CHANGE_ME_POOL_ID"
   OIDC_CLIENT_ID: "CHANGE_ME"
