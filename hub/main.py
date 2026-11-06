@@ -8,8 +8,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import httpx
-from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from hub import auth
@@ -54,6 +55,25 @@ def create_app(
         Page requests without a login go to /login.
         """
         return RedirectResponse("/login", status_code=302)
+
+    @app.exception_handler(HTTPException)
+    async def _forbidden_page(request: Request, exc: HTTPException) -> Response:
+        """화면 요청의 403 은 안내 페이지로(누가 왜 막혔는지, 돌아갈 길). API 경로와 다른 상태는 기본 JSON 그대로.
+
+        A 403 on a page request becomes a friendly page (who was refused, why, a way back);
+        API paths and other statuses keep FastAPI's JSON answer.
+        """
+        if exc.status_code != 403 or request.url.path.startswith("/v1/"):
+            return await http_exception_handler(request, exc)
+        session = auth.current_session(request)
+        context = {
+            "request": request,
+            "session": session,
+            "t": request.app.state.t,
+            "msg": "",
+            "detail": str(exc.detail),
+        }
+        return request.app.state.templates.TemplateResponse(request, "forbidden.html", context, status_code=403)
 
     @app.get("/healthz")
     def healthz() -> dict:

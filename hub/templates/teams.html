@@ -3,20 +3,19 @@
 <h1>{{ t("teams.title") }}</h1>
 {% if rows %}
 <table>
-  <tr><th>{{ t("teams.col.team") }}</th><th>{{ t("teams.col.dept") }}</th><th>{{ t("teams.col.leader") }}</th>
+  <tr><th>{{ t("teams.col.team") }}</th><th>{{ t("teams.col.leader") }}</th>
       <th>{{ t("teams.col.draft") }}</th><th>{{ t("teams.col.published") }}</th><th></th></tr>
   {% for r in rows %}
   <tr>
-    <td><a href="/teams/{{ r.team_id }}">{{ r.name }}</a></td>
-    <td>{{ r.dept }}</td>
+    <td><a href="/teams/{{ r.team_id }}">{{ r.dept }} / {{ r.name }}</a></td>
     <td>{{ r.leader_email or r.leader_name or "" }}</td>
-    <td>{% with item=r.draft %}{% include "_status.html" %}{% endwith %}</td>
-    <td>{% if r.published %}v{{ r.published.version }} <span class="muted">{{ r.published.published_at }}</span>{% else %}<span class="muted">{{ t("status.none") }}</span>{% endif %}</td>
-    <td>{% if session.role == "admin" %}<form method="post" action="/teams/{{ r.team_id }}/remove"><button class="danger">{{ t("teams.remove") }}</button></form>{% endif %}</td>
+    <td>{% if r.draft %}{% with item=r.draft %}{% include "_status.html" %}{% endwith %}{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td>{% if r.published %}v{{ r.published.version }} <span class="muted">{{ ts(r.published.published_at) }}</span>{% else %}<span class="muted">{{ t("teams.unpublished") }}</span>{% endif %}</td>
+    <td>{% if session.role == "admin" %}<form method="post" action="/teams/{{ r.team_id }}/remove" onsubmit="return confirm({{ t('teams.remove.confirm') | tojson }})"><button class="danger">{{ t("teams.remove") }}</button></form>{% endif %}</td>
   </tr>
   {% endfor %}
 </table>
-{% else %}<p class="muted">{{ t("teams.none") }}</p>{% endif %}
+{% else %}<p class="muted">{{ t("teams.none") }}{% if session.role != "admin" %} {{ t("teams.none.leader_hint") }}{% endif %}</p>{% endif %}
 
 {% if session.role == "admin" %}
 <h2>{{ t("teams.add") }}</h2>
@@ -24,7 +23,7 @@
 {% if candidates %}
 <form method="post" action="/teams" class="card">
   <select name="team_id">
-    {% for c in candidates %}<option value="{{ c.team_id }}">{{ c.dept }} / {{ c.name }} ({{ c.member_count }})</option>{% endfor %}
+    {% for c in candidates %}<option value="{{ c.team_id }}">{{ c.dept }} / {{ c.name }} ({{ c.member_count }}{{ t("teams.members_suffix") }})</option>{% endfor %}
   </select>
   <button class="primary">{{ t("teams.add.button") }}</button>
 </form>

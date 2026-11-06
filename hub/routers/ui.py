@@ -20,8 +20,10 @@ from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 from hub.agentcore import AgentCoreError
 from hub.auth import current_session, require_admin, require_session, require_team_access
+from hub.diff import policy_diff
 from hub.fragment import LOCK_CHOICES, STRICT_DEFAULTS, build_fragment, empty_policy, validate_policy, version_of
 from hub.gateway_api import GatewayApiError
+from hub.timefmt import fmt_ts
 
 router = APIRouter()
 
@@ -131,18 +133,30 @@ def team_page(request: Request, team_id: str) -> Response:
 
 @router.post("/teams/{team_id}/save")
 async def save_draft(request: Request, team_id: str) -> Response:
-    """폼 -> 정책 문서 -> 검증 -> 초안 저장(상태 draft).
+    """폼 -> 정책 문서 -> 검증 -> 초안 저장. action 이 submit 이면 이어서 승인 요청, publish(관리자)면 바로 발행.
 
-    Form -> policy document -> validation -> draft saved (status draft).
+    Form -> policy document -> validation -> draft saved. action=submit then requests approval;
+    action=publish (admin) publishes right away. Errors save nothing.
     """
     session = require_team_access(request, team_id)
     store = request.app.state.store
-    doc = policy_from_form(await request.form())
+    form = await request.form()
+    action = form.get("action") or "save"
+    if action == "publish":
+        require_admin(request)
+    doc = policy_from_form(form)
     errors = validate_policy(doc, store.org_settings())
     if errors:
         return _render_editor(request, session, team_id, errors=errors, doc=doc, status_code=400)
     store.put_draft(team_id, doc, status="draft", edited_by=session["email"])
     store.audit("save", actor=session["email"], team_id=team_id)
+    if action == "submit":
+        store.put_draft(team_id, doc, status="pending", submitted_by=session["email"], edited_by=session["email"])
+        store.audit("submit", actor=session["email"], team_id=team_id)
+        return RedirectResponse(f"/teams/{team_id}?msg=msg.submitted", status_code=302)
+    if action == "publish":
+        _publish(request, session, team_id, doc)
+        return RedirectResponse(f"/teams/{team_id}?msg=msg.published", status_code=302)
     return RedirectResponse(f"/teams/{team_id}?msg=msg.saved", status_code=302)
 
 
@@ -359,7 +373,9 @@ def audit_page(request: Request) -> Response:
     Audit log (admin).
     """
     session = require_admin(request)
-    return _render(request, "audit.html", session=session, entries=request.app.state.store.list_audit(limit=200))
+    store = request.app.state.store
+    team_names = {team["team_id"]: f"{team.get('dept', '')} / {team.get('name', '')}" for team in store.list_teams()}
+    return _render(request, "audit.html", session=session, entries=store.list_audit(limit=200), team_names=team_names)
 
 
 # --- helpers ---
@@ -472,6 +488,9 @@ def _render_editor(
     for alias in doc.get("models") or []:  # keep a draft's aliases visible even if admin-api is down
         if alias not in known:
             models.append({"alias": alias, "display_name": alias})
+    t = request.app.state.t
+    changes = policy_diff((published or {}).get("doc"), draft["doc"], t) if draft else []
+    preview_basis = "draft" if draft else ("published" if published else "empty")
     return _render(
         request,
         "team.html",
@@ -480,6 +499,8 @@ def _render_editor(
         doc=doc,
         draft=draft,
         published=published,
+        changes=changes,
+        preview_basis=preview_basis,
         models=models,
         models_error=models_error,
         catalog=store.list_agents(),
@@ -509,6 +530,7 @@ def _render_org(
         session=session,
         org=org,
         doc=doc,
+        receiving=_teams_receiving_default(request),
         catalog=store.list_agents(),
         errors=errors or [],
         lock_choices=LOCK_CHOICES,
@@ -516,6 +538,27 @@ def _render_org(
         mcp_text="\n".join(f"{n} {s.get('url', '')}" for n, s in (doc.get("mcp_servers") or {}).items()),
         plugins_text="\n".join(doc.get("plugins") or []),
     )
+
+
+def _teams_receiving_default(request: Request) -> list[str] | None:
+    """지금 조직 기본 정책을 받는 팀 이름('부서 / 팀') — 게이트웨이의 팀 중 허브가 관리하지 않거나 발행본이 없는 팀.
+    게이트웨이를 못 읽으면 None(화면은 목록을 생략한다).
+
+    Teams currently receiving the org default ('dept / name'): gateway teams the hub does not manage or that have
+    no published copy. None when the gateway cannot be read (the page omits the list).
+    """
+    store = request.app.state.store
+    try:
+        gateway_teams = request.app.state.gateway.teams()
+    except GatewayApiError:
+        return None
+    managed = {team["team_id"] for team in store.list_teams()}
+    names = []
+    for team in gateway_teams:
+        if team["team_id"] in managed and store.get_policy(team["team_id"], "PUBLISHED"):
+            continue
+        names.append(f"{team['dept']} / {team['name']}")
+    return names
 
 
 def _render(request: Request, name: str, *, session: dict | None, status_code: int = 200, **context: Any) -> Response:
@@ -531,8 +574,27 @@ def _render(request: Request, name: str, *, session: dict | None, status_code: i
         t=request.app.state.t,
         msg=request.app.state.t(msg_key) if msg_key else "",
         json_dumps=lambda v: json.dumps(v, ensure_ascii=False, indent=2),
+        json_dumps_line=lambda v: json.dumps(v, ensure_ascii=False),
+        lock_defaults=STRICT_DEFAULTS,
+        ts=_ts_filter(request.app.state.settings.hub_tz),
     )
     return templates.TemplateResponse(request, name, context, status_code=status_code)
+
+
+def _ts_filter(zone_name: str):
+    """템플릿용 시각 함수: 저장된 UTC ISO -> 설정 시간대 'MM/DD HH:MM'(seconds=True 면 초까지).
+
+    Timestamp function for templates: stored UTC ISO -> 'MM/DD HH:MM' in the configured zone (seconds on request).
+    """
+
+    def ts(value: str | None, seconds: bool = False) -> str:
+        """한 값을 포맷한다.
+
+        Format one value.
+        """
+        return fmt_ts(value, zone_name, seconds=seconds)
+
+    return ts
 
 
 def _lines(text: str | None) -> list[str]:

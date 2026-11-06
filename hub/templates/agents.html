@@ -2,23 +2,20 @@
 {% block content %}
 <h1>{{ t("agents.title") }}</h1>
 {% if error %}<div class="err">{{ error }}</div>{% endif %}
-<h2>{{ t("agents.registry") }}</h2>
-<form method="post" action="/agents/refresh" class="actions"><button>{{ t("agents.refresh") }}</button></form>
+<p class="hint">{{ t("agents.hint") }}</p>
+<form method="post" action="/agents/refresh" class="actions"><button>{{ t("agents.refresh") }}</button> <span class="muted">{{ t("agents.refresh.hint") }}</span></form>
 {% if records %}
+{% set catalog_names = catalog | map(attribute="name") | list %}
 <table>
-  <tr><th>{{ t("agents.col.name") }}</th><th>{{ t("agents.col.kind") }}</th><th>{{ t("agents.col.tools") }}</th><th>{{ t("agents.col.status") }}</th><th></th></tr>
+  <tr><th>{{ t("agents.col.name") }}</th><th>{{ t("agents.col.kind") }}</th><th>{{ t("agents.col.tools") }}</th><th>{{ t("agents.col.status") }}</th><th>{{ t("agents.col.selectable") }}</th><th></th></tr>
   {% for r in records %}
-  <tr><td>{{ r.name }}<br><span class="muted">{{ r.description }}</span></td><td>{{ r.kind }}</td><td>{{ r.tools | join(", ") }}</td><td><span class="pill">{{ r.status }}</span></td>
+  {% set label = t("agents.status." + r.status) %}
+  <tr><td>{{ r.name }}<br><span class="muted">{{ r.description }}</span></td><td>{{ r.kind }}</td><td>{{ r.tools | join(", ") }}</td>
+      <td><span class="pill {{ 'published' if r.status == 'APPROVED' else ('pending' if r.status == 'PENDING_APPROVAL' else ('rejected' if r.status == 'REJECTED' else '')) }}">{{ r.status if label.startswith("agents.status.") else label }}</span></td>
+      <td>{{ t("yes") if r.name in catalog_names else t("no") }}</td>
       <td>{% if r.status != "APPROVED" %}<form method="post" action="/agents/{{ r.name }}/approve"><button class="primary">{{ t("agents.approve") }}</button></form>{% endif %}
           {% if r.status not in ("REJECTED",) %}<form method="post" action="/agents/{{ r.name }}/reject"><input type="text" name="reason" placeholder="{{ t('team.reject.reason') }}"> <button class="danger">{{ t("agents.reject") }}</button></form>{% endif %}</td></tr>
   {% endfor %}
-</table>
-{% else %}<p class="muted">{{ t("agents.none") }}</p>{% endif %}
-<h2>{{ t("agents.catalog") }}</h2>
-{% if catalog %}
-<table>
-  <tr><th>{{ t("agents.col.name") }}</th><th>{{ t("agents.col.kind") }}</th><th>{{ t("agents.col.tools") }}</th></tr>
-  {% for a in catalog %}<tr><td>{{ a.name }}</td><td>{{ a.kind }}</td><td>{{ a.tools | join(", ") }}</td></tr>{% endfor %}
 </table>
 {% else %}<p class="muted">{{ t("agents.none") }}</p>{% endif %}
 {% endblock %}

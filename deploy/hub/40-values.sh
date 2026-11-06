@@ -63,6 +63,7 @@ service:
   port: 8080
 env:
   HUB_LANG: "ko"
+  HUB_TZ: "${HUB_TZ:-Asia/Seoul}"
   AWS_REGION: "$REGION"
   DDB_TABLE: "ai-governance-hub"
   ADMIN_API_URL: "http://llm-gateway-admin-api.$NS.svc:8080"

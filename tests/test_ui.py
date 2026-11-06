@@ -236,7 +236,7 @@ def test_audit_page_lists_entries(client, settings, store):
     store.audit("publish", actor=ADMIN_EMAIL, team_id=TEAM, detail={"version": 1})
     login_as(client, settings)
 
-    assert "publish" in client.get("/audit").text
+    assert "발행" in client.get("/audit").text
 
 
 def test_remove_team_unmanages_it(client, settings, store):
@@ -285,7 +285,7 @@ def test_agents_page_lists_registry_records_and_approval_refreshes_the_catalog(c
     login_as(client, settings)
 
     page = client.get("/agents")
-    assert page.status_code == 200 and "PENDING_APPROVAL" in page.text
+    assert page.status_code == 200 and "승인 대기" in page.text
 
     assert client.post("/agents/api-catalog/approve").status_code == 302
     assert agentcore.status_changes == [("api-catalog", "APPROVED")]

@@ -2,41 +2,54 @@
 {% block content %}
 <h1>{{ t("team.title") }}: {{ team.dept }} / {{ team.name }}</h1>
 {% if errors %}<div class="err"><strong>{{ t("team.errors") }}</strong><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+{% set pending = draft and draft.status == "pending" %}
 
 <div class="card">
-  {% with item=draft %}{% include "_status.html" %}{% endwith %}
-  {% if draft and draft.status == "pending" %}<span class="muted">{{ t("team.submitted_by") }}: {{ draft.submitted_by }} · {{ draft.submitted_at }}</span>{% endif %}
-  {% if draft and draft.status == "rejected" and draft.rejected_reason %}<div class="err">{{ t("team.rejected_reason") }}: {{ draft.rejected_reason }}</div>{% endif %}
-  <div>
-  {% if published %}{{ t("team.published") }} v{{ published.version }} · {{ published.published_at }} · {{ published.published_by }} · <code>{{ published.version_hash }}</code>
-  {% else %}<span class="muted">{{ t("team.no_published") }}</span>{% endif %}
+  <div><strong>{{ t("team.draft_label") }}</strong> {% with item=draft %}{% include "_status.html" %}{% endwith %}
+    {% if pending %}<span class="muted">{{ t("team.submitted_by") }}: {{ draft.submitted_by }} · {{ ts(draft.submitted_at) }}</span>{% endif %}
   </div>
-  <a href="/teams/{{ team.team_id }}/preview.json" target="_blank">{{ t("team.preview") }}</a>
+  {% if draft and draft.status == "rejected" and draft.rejected_reason %}<div class="err">{{ t("team.rejected_reason") }}: {{ draft.rejected_reason }}</div>{% endif %}
+  <div><strong>{{ t("team.published_label") }}</strong>
+    {% if published %}v{{ published.version }} · {{ ts(published.published_at) }} · {{ published.published_by }} · <code>{{ published.version_hash }}</code>
+    {% else %}<span class="muted">{{ t("team.no_published") }}</span>{% endif %}
+  </div>
+  <div><a href="/teams/{{ team.team_id }}/preview.json" target="_blank">{{ t("team.preview") }}</a> <span class="muted">{{ t("team.preview.basis." + preview_basis) }}</span></div>
 </div>
 
+{% if changes %}
+<div class="card">
+  <h2 style="margin-top:0">{{ t("team.changes") }}{% if not published %} <span class="muted">({{ t("team.changes.new") }})</span>{% endif %}</h2>
+  <table>
+    <tr><th>{{ t("team.changes.col.field") }}</th><th>{{ t("team.changes.before") }}</th><th>{{ t("team.changes.after") }}</th></tr>
+    {% for c in changes %}<tr><td>{{ t(c.field) }}</td><td class="muted">{{ c.before or "—" }}</td><td>{{ c.after or "—" }}</td></tr>{% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{% if pending %}<div class="warn">{{ t("team.pending_warning") }}</div>{% endif %}
 <form method="post" action="/teams/{{ team.team_id }}/save">
   {% with with_models=true %}{% include "_policy_form.html" %}{% endwith %}
   <div class="actions">
-    <button class="primary">{{ t("team.save") }}</button>
+    <button class="primary" name="action" value="save">{{ t("team.save_cancel") if pending else t("team.save") }}</button>
+    {% if not pending %}<button name="action" value="submit">{{ t("team.save_submit") }}</button>{% endif %}
+    {% if session.role == "admin" %}<button name="action" value="publish">{{ t("team.save_publish") }}</button>{% endif %}
   </div>
 </form>
+{% if session.role == "admin" and pending %}
 <div class="actions">
-  {% if draft and draft.status in ("draft", "rejected") %}
-  <form method="post" action="/teams/{{ team.team_id }}/submit"><button>{{ t("team.submit") }}</button></form>
-  {% endif %}
-  {% if session.role == "admin" and draft and draft.status == "pending" %}
   <form method="post" action="/teams/{{ team.team_id }}/approve"><button class="primary">{{ t("team.approve") }}</button></form>
   <form method="post" action="/teams/{{ team.team_id }}/reject"><input type="text" name="reason" placeholder="{{ t('team.reject.reason') }}"> <button class="danger">{{ t("team.reject") }}</button></form>
-  {% endif %}
-  {% if session.role == "admin" and draft and draft.status != "pending" %}
-  <form method="post" action="/teams/{{ team.team_id }}/publish"><button>{{ t("team.publish") }}</button></form>
-  {% endif %}
 </div>
+{% endif %}
 
 {% if versions %}
 <h2>{{ t("team.history") }}</h2>
 <table>
-  {% for v in versions %}<tr><td>v{{ v.version }}</td><td>{{ v.published_at }}</td><td>{{ v.published_by }}</td><td><code>{{ v.version_hash }}</code></td></tr>{% endfor %}
+  <tr><th>{{ t("team.version") }}</th><th>{{ t("team.history.col.at") }}</th><th>{{ t("team.history.col.by") }}</th><th>{{ t("team.history.col.hash") }}</th></tr>
+  {% for v in versions %}
+  <tr><td>v{{ v.version }}{% if published and v.version == published.version %} <span class="pill published">{{ t("team.history.current") }}</span>{% endif %}</td>
+      <td>{{ ts(v.published_at) }}</td><td>{{ v.published_by }}</td><td><code>{{ v.version_hash }}</code></td></tr>
+  {% endfor %}
 </table>
 {% endif %}
 {% endblock %}

@@ -6,7 +6,7 @@ replicaCount: 1
 
 image:
   repository: CHANGE_ME            # e.g. 123456789012.dkr.ecr.us-west-2.amazonaws.com/llm-gateway/governance-hub
-  tag: "0.1.1"
+  tag: "0.1.2"
   pullPolicy: IfNotPresent
 
 serviceAccount:
@@ -22,6 +22,7 @@ service:
 # Plain environment (ConfigMap). Names = hub/config.py Settings fields, upper-case.
 env:
   HUB_LANG: "ko"
+  HUB_TZ: "Asia/Seoul"             # screen time zone for timestamps (IANA name)
   AWS_REGION: "us-west-2"
   DDB_TABLE: "ai-governance-hub"
   # LLM gateway admin-api over in-cluster DNS (no VPN needed)

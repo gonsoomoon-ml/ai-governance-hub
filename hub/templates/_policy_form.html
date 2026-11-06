@@ -3,22 +3,35 @@
 <fieldset>
   <legend>{{ t("team.models") }}</legend>
   {% if models_error %}<div class="err">{{ t("team.models.error") }}: {{ models_error }}</div>{% endif %}
-  <label><input type="checkbox" name="models_unrestricted" {% if doc.models is none %}checked{% endif %}> {{ t("team.models.unrestricted") }}</label>
+  <label><input type="checkbox" name="models_unrestricted" id="models_unrestricted" {% if doc.models is none %}checked{% endif %}> {{ t("team.models.unrestricted") }}</label>
+  <div id="model_choices">
   {% for m in models %}
-  <label class="inline"><input type="checkbox" name="models" value="{{ m.alias }}" {% if doc.models and m.alias in doc.models %}checked{% endif %}> {{ m.display_name }} <span class="muted">{{ m.alias }}</span></label>
+  <label class="inline"><input type="checkbox" name="models" value="{{ m.alias }}" {% if doc.models and m.alias in doc.models %}checked{% endif %} {% if doc.models is none %}disabled{% endif %}> {{ m.display_name }} <span class="muted">{{ m.alias }}</span></label>
   {% endfor %}
+  </div>
+  <p class="hint">{{ t("team.models.hint") }}</p>
+  <script>
+    (function () {
+      var all = document.getElementById("models_unrestricted"), box = document.getElementById("model_choices");
+      if (!all || !box) return;
+      var sync = function () { box.querySelectorAll("input").forEach(function (i) { i.disabled = all.checked; }); };
+      all.addEventListener("change", sync); sync();
+    })();
+  </script>
 </fieldset>
 {% endif %}
 <fieldset>
   <legend>{{ t("team.marketplace") }}</legend>
-  <label>{{ t("team.marketplace.name") }} <input type="text" name="marketplace_name" value="{{ doc.marketplace.name if doc.marketplace else '' }}"></label>
-  <label>{{ t("team.marketplace.repo") }} <input type="text" name="marketplace_repo" value="{{ doc.marketplace.repo if doc.marketplace else '' }}"></label>
-  <label>{{ t("team.marketplace.ref") }} <input type="text" name="marketplace_ref" value="{{ doc.marketplace.ref if doc.marketplace and doc.marketplace.ref else '' }}"></label>
-  <label>{{ t("team.plugins") }} <textarea name="plugins">{{ plugins_text }}</textarea></label>
+  <label>{{ t("team.marketplace.name") }} <input type="text" name="marketplace_name" placeholder="my-extensions" value="{{ doc.marketplace.name if doc.marketplace else '' }}"></label>
+  <label>{{ t("team.marketplace.repo") }} <input type="text" name="marketplace_repo" placeholder="owner/repo" value="{{ doc.marketplace.repo if doc.marketplace else '' }}"></label>
+  <label>{{ t("team.marketplace.ref") }} <input type="text" name="marketplace_ref" placeholder="v1.0" value="{{ doc.marketplace.ref if doc.marketplace and doc.marketplace.ref else '' }}"></label>
+  <label>{{ t("team.plugins") }} <textarea name="plugins" placeholder="deck-design">{{ plugins_text }}</textarea></label>
+  <p class="hint">{{ t("team.plugins.hint") }}</p>
 </fieldset>
 <fieldset>
   <legend>{{ t("team.mcp_servers") }}</legend>
-  <textarea name="mcp_servers">{{ mcp_text }}</textarea>
+  <textarea name="mcp_servers" placeholder="deepwiki https://mcp.deepwiki.com/mcp">{{ mcp_text }}</textarea>
+  <p class="hint">{{ t("team.mcp_servers.hint") }}</p>
 </fieldset>
 <fieldset>
   <legend>{{ t("team.agents") }}</legend>
@@ -37,7 +50,7 @@
     {% if fixed %}<span class="pill">{{ t("team.locks.fixed") }}: {{ t("lock." + key + "." + fixed) }}</span><input type="hidden" name="lock_{{ key }}" value="{{ fixed }}">
     {% else %}
       {% for c in choices %}
-      <label class="inline"><input type="radio" name="lock_{{ key }}" value="{{ c }}" {% if (doc.locks or {}).get(key, '') == c %}checked{% endif %}> {{ t("lock." + key + "." + c) }}</label>
+      <label class="inline"><input type="radio" name="lock_{{ key }}" value="{{ c }}" {% if (doc.locks or {}).get(key, lock_defaults[key]) == c %}checked{% endif %}> {{ t("lock." + key + "." + c) }}{% if c == lock_defaults[key] %} <span class="muted">{{ t("lock.default_marker") }}</span>{% endif %}</label>
       {% endfor %}
     {% endif %}
   </div>

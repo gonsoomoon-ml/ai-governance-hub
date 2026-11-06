@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width:560px;margin:60px auto">
+  <h1>{{ t("forbidden.title") }}</h1>
+  <p>{{ t("forbidden.hint") }}</p>
+  <p class="muted"><code>{{ detail }}</code></p>
+  <div class="actions">
+    {% if session %}<a href="/teams"><button>{{ t("nav.teams") }}</button></a>
+    <form method="post" action="/auth/logout"><button>{{ t("nav.logout") }}</button></form>
+    {% else %}<a href="/login"><button class="primary">{{ t("forbidden.login") }}</button></a>{% endif %}
+  </div>
+</div>
+{% endblock %}

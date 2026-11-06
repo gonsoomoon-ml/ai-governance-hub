@@ -3,9 +3,9 @@
 <h1>{{ t("pending.title") }}</h1>
 {% if rows %}
 <table>
-  <tr><th>{{ t("teams.col.team") }}</th><th>{{ t("teams.col.dept") }}</th><th>{{ t("team.submitted_by") }}</th><th></th></tr>
+  <tr><th>{{ t("teams.col.team") }}</th><th>{{ t("team.submitted_by") }}</th><th></th></tr>
   {% for r in rows %}
-  <tr><td>{{ r.name }} <span class="muted">{{ r.team_id }}</span></td><td>{{ r.dept }}</td><td>{{ r.draft.submitted_by }} · {{ r.draft.submitted_at }}</td>
+  <tr><td>{{ r.dept }} / {{ r.name }}</td><td>{{ r.draft.submitted_by }} · {{ ts(r.draft.submitted_at) }}</td>
       <td><a href="/teams/{{ r.team_id }}">{{ t("pending.open") }}</a></td></tr>
   {% endfor %}
 </table>

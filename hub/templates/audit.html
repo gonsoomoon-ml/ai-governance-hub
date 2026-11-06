@@ -4,7 +4,10 @@
 <table>
   <tr><th>{{ t("audit.col.at") }}</th><th>{{ t("audit.col.actor") }}</th><th>{{ t("audit.col.action") }}</th><th>{{ t("audit.col.team") }}</th><th>{{ t("audit.col.detail") }}</th></tr>
   {% for e in entries %}
-  <tr><td>{{ e.at }}</td><td>{{ e.actor }}</td><td>{{ e.action }}</td><td class="muted">{{ e.team_id }}</td><td><code>{{ json_dumps(e.detail) if e.detail else "" }}</code></td></tr>
+  {% set label = t("audit.action." + e.action) %}
+  <tr><td title="{{ e.at }}">{{ ts(e.at, true) }}</td><td>{{ e.actor }}</td><td>{{ e.action if label.startswith("audit.action.") else label }}</td>
+      <td>{{ team_names.get(e.team_id) or (e.team_id or "") }}</td>
+      <td>{% if e.detail %}<details><summary class="muted">{{ json_dumps_line(e.detail) | truncate(80) }}</summary><pre>{{ json_dumps(e.detail) }}</pre></details>{% endif %}</td></tr>
   {% endfor %}
 </table>
 {% endblock %}

@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     hub_token: str = ""  # static bearer the gateway presents; empty = resolve refuses (503)
 
     hub_lang: str = "ko"  # screen language: ko | en
+    hub_tz: str = "Asia/Seoul"  # screen time zone for timestamps (IANA name)
 
     # --- storage ---
     ddb_table: str = "ai-governance-hub"
