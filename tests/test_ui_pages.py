@@ -110,7 +110,8 @@ def test_org_page_names_the_safety_net_and_lists_the_teams_receiving_it(client, 
 
     client.post(SAVE, data={**FORM, "action": "publish"})
     page = client.get("/org").text
-    assert "engineering / mobile" in page and "engineering / platform" not in page
+    receiving = page.split("지금 이 정책을 받는 팀")[1].split("</p>")[0]  # the sidebar lists every managed team
+    assert "engineering / mobile" in receiving and "engineering / platform" not in receiving
 
 
 def test_org_fixed_locks_are_read_only_in_the_default_policy(client, settings, store):

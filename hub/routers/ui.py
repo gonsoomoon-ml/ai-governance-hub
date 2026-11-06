@@ -13,6 +13,7 @@ published copy. The other order opens a window where the PC's /model list and se
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from fastapi import APIRouter, Form, HTTPException, Request
@@ -596,6 +597,7 @@ def _render(request: Request, name: str, *, session: dict | None, status_code: i
         t=t,
         lang=lang,
         theme=theme,
+        **_nav_context(request, session),
         path=request.url.path,
         pillar=_pillar_of(request.url.path),
         msg=t(msg_key) if msg_key else "",
@@ -610,6 +612,29 @@ def _render(request: Request, name: str, *, session: dict | None, status_code: i
     if request.query_params.get("theme") == theme:
         response.set_cookie(THEME_COOKIE, theme, max_age=60 * 60 * 24 * 365, samesite="lax")
     return response
+
+
+def _nav_context(request: Request, session: dict | None) -> dict:
+    """왼쪽 메뉴 문맥: 팀 바로가기(초안 상태 포함)·승인 대기 건수·기본 접힘(팀 편집 화면만).
+
+    Sidebar context: team shortcuts with draft status, the pending count, and the default collapse state
+    (collapsed only on the team editor).
+    """
+    if not session:
+        return {"nav_teams": [], "pending_count": 0, "nav_default": "expanded"}
+    store = request.app.state.store
+    teams = store.list_teams()
+    if session["role"] != "admin":
+        teams = [team for team in teams if team["team_id"] in session.get("teams", [])]
+    rows, pending = [], 0
+    for team in teams:
+        status = (store.get_policy(team["team_id"], "DRAFT") or {}).get("status") or "none"
+        pending += status == "pending"
+        rows.append(
+            {"team_id": team["team_id"], "name": team.get("name", ""), "dept": team.get("dept", ""), "status": status}
+        )
+    default = "collapsed" if re.fullmatch(r"/teams/[^/]+", request.url.path) else "expanded"
+    return {"nav_teams": rows, "pending_count": pending, "nav_default": default}
 
 
 def _pillar_of(path: str) -> str:

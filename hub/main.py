@@ -75,6 +75,9 @@ def create_app(
             "theme": theme_of(request),
             "path": request.url.path,
             "pillar": "",
+            "nav_teams": [],
+            "pending_count": 0,
+            "nav_default": "expanded",
             "msg": "",
             "detail": str(exc.detail),
         }

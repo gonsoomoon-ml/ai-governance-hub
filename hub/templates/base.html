@@ -54,6 +54,42 @@
     }
   }
   * { box-sizing: border-box; }
+  /* App shell: left sidebar (always on the deck's dark ground) + a column with the slim top bar and the page. */
+  body.shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+  body.shell.nav-collapsed { grid-template-columns: 56px minmax(0, 1fr); }
+  .column { min-width: 0; }
+  .nav { --nav-ink:#EAF0FF; --nav-muted:#AEB6C8; --nav-hair:#2A3350; --nav-coral:#FF7A5C; --nav-blue:#4DA3FF;
+         background: #05070D; color: var(--nav-ink); border-right: 1px solid var(--nav-hair); position: sticky; top: 0; height: 100vh; overflow: auto; display: flex; flex-direction: column; }
+  .nav .navhead { display: flex; align-items: flex-start; gap: 8px; padding: 12px 10px 10px 14px; border-bottom: 1px solid var(--nav-hair); }
+  .nav .brand { color: var(--nav-ink); text-decoration: none; font-weight: 700; line-height: 1.2; flex: 1; min-width: 0; }
+  .nav .brand small { display: block; font-weight: 400; font-size: 0.72em; color: var(--nav-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav #nav-toggle { background: transparent; color: var(--nav-muted); border: 1px solid var(--nav-hair); padding: 2px 8px; border-radius: 6px; }
+  .nav .group { padding: 6px 0; }
+  .nav .group-title { font-size: 0.72em; letter-spacing: 0.06em; text-transform: uppercase; color: var(--nav-muted); padding: 12px 14px 4px; }
+  .nav .group.p1 .group-title { color: var(--nav-coral); } .nav .group.p2 .group-title { color: var(--nav-blue); }
+  .nav a[href]:not(.brand):not(.navteam) { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 11px; color: var(--nav-muted); text-decoration: none; border-left: 3px solid transparent; }
+  .nav a[href]:not(.brand):not(.navteam):hover { color: var(--nav-ink); background: rgba(255,255,255,0.04); }
+  .nav a.active { color: var(--nav-ink); font-weight: 700; background: rgba(255,255,255,0.06); }
+  .nav .group.p1 a.active { border-left-color: var(--nav-coral); } .nav .group.p2 a.active { border-left-color: var(--nav-blue); } .nav .group:not(.p1):not(.p2) a.active { border-left-color: var(--nav-muted); }
+  .nav .icon { flex: none; display: inline-flex; width: 20px; height: 20px; }
+  .nav .label { min-width: 0; line-height: 1.25; }
+  .nav .desc { display: block; font-size: 0.76em; font-weight: 400; color: var(--nav-muted); margin-top: 1px; }
+  .nav .badge { margin-left: auto; background: var(--nav-coral); color: #05070D; border-radius: 999px; padding: 0 8px; font-size: 0.75em; font-weight: 700; line-height: 1.6; }
+  .nav .navteams { padding: 0 0 4px; }
+  .nav .navteam { display: flex; align-items: center; gap: 8px; padding: 3px 12px 3px 44px; font-size: 0.88em; color: var(--nav-muted); text-decoration: none; }
+  .nav .navteam:hover, .nav .navteam.active { color: var(--nav-ink); }
+  .navstatus::before { content: "●"; font-size: 0.8em; }
+  .navstatus.pending { color: #FFD166; } .navstatus.published { color: #4ADE80; } .navstatus.draft { color: #4DA3FF; } .navstatus.rejected { color: #FF8A80; } .navstatus.none { color: #5B6478; }
+  body.nav-collapsed .nav .label, body.nav-collapsed .nav .brand, body.nav-collapsed .nav .group-title, body.nav-collapsed .nav .navteams, body.nav-collapsed .nav .badge { display: none; }
+  body.nav-collapsed .nav .navhead { justify-content: center; padding: 12px 6px 10px; }
+  body.nav-collapsed .nav a[href]:not(.brand):not(.navteam) { justify-content: center; padding: 10px 0; }
+  header.top .navopen { display: none; }
+  @media (max-width: 1000px) {
+    body.shell { grid-template-columns: 1fr; }
+    .nav { position: fixed; left: 0; top: 0; width: 248px; transform: translateX(-100%); transition: transform .15s; z-index: 20; }
+    body.nav-open .nav { transform: none; }
+    header.top .navopen { display: inline-block; background: transparent; color: var(--header-ink); border-color: var(--header-hair); }
+  }
   body { font-family: "Amazon Ember", -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; font-size: 16px; line-height: 1.5; color: var(--ink); margin: 0; background: var(--bg); }
   a { color: var(--link); }
   header { background: var(--header-bg); color: var(--header-ink); border-bottom: 1px solid var(--header-hair); padding: 10px 24px; display: flex; gap: 20px; align-items: center; }
@@ -147,20 +183,13 @@
   dl.terms dt { font-weight: 600; margin-top: 10px; } dl.terms dd { margin: 2px 0 0 0; color: var(--ink); }
 </style>
 </head>
-<body>
-<header>
-  <span class="brand">AI Governance Hub<small>{{ t("brand.series") }}</small></span>
+<body{% if session %} class="shell" data-nav-default="{{ nav_default }}"{% endif %}>
+{% if session %}{% include "_nav.html" %}{% endif %}
+<div class="column">
+<header class="top">
+  {% if session %}<button type="button" id="nav-open" class="navopen" title="{{ t('nav.open') }}">≡</button>{% endif %}
+  {% if not session %}<span class="brand">AI Governance Hub<small>{{ t("brand.series") }}</small></span>{% endif %}
   {% if session %}
-  <nav>
-    <a{% if path.startswith("/teams") %} class="active"{% endif %} href="/teams">{{ t("nav.teams") }}</a>
-    {% if session.role == "admin" %}
-    <a{% if path.startswith("/pending") %} class="active"{% endif %} href="/pending">{{ t("nav.pending") }}</a>
-    <a{% if path.startswith("/org") %} class="active"{% endif %} href="/org">{{ t("nav.org") }}</a>
-    <a{% if path.startswith("/agents") %} class="active"{% endif %} href="/agents">{{ t("nav.agents") }}</a>
-    <a{% if path.startswith("/audit") %} class="active"{% endif %} href="/audit">{{ t("nav.audit") }}</a>
-    {% endif %}
-    <a{% if path.startswith("/help") %} class="active"{% endif %} href="/help">{{ t("nav.help") }}</a>
-  </nav>
   <span class="who">{{ session.email }} · <span title="{{ t('role.' + session.role + '.tip') }}">{{ t("role." + session.role) }}</span>
     <form method="post" action="/auth/logout"><button>{{ t("nav.logout") }}</button></form></span>
   {% endif %}
@@ -171,6 +200,29 @@
   {% if msg %}<div class="msg" role="status" aria-live="polite">{{ msg }}</div>{% endif %}
   {% block content %}{% endblock %}
 </main>
+</div>
+<script>
+  // Sidebar: expanded by default, collapsed on the team editor; the user's choice is kept in localStorage.
+  (function () {
+    var b = document.body, btn = document.getElementById("nav-toggle"), open = document.getElementById("nav-open");
+    if (!btn) return;
+    var pref = null; try { pref = localStorage.getItem("hub_nav"); } catch (e) {}
+    if ((pref || b.dataset.navDefault) === "collapsed") b.classList.add("nav-collapsed");
+    function sync() {
+      var c = b.classList.contains("nav-collapsed");
+      btn.setAttribute("aria-expanded", c ? "false" : "true");
+      btn.textContent = c ? "▶" : "◀";
+      btn.title = c ? btn.dataset.expand : btn.dataset.collapse;
+    }
+    sync();
+    btn.addEventListener("click", function () {
+      b.classList.toggle("nav-collapsed");
+      try { localStorage.setItem("hub_nav", b.classList.contains("nav-collapsed") ? "collapsed" : "expanded"); } catch (e) {}
+      sync();
+    });
+    if (open) open.addEventListener("click", function () { b.classList.toggle("nav-open"); });
+  })();
+</script>
 <script>
   // One submit at a time: the form gets .busy and buttons with data-busy show their waiting text.
   document.addEventListener("submit", function (e) {
