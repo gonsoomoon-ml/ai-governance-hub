@@ -16,20 +16,29 @@
 </div>
 
 <form method="post" action="/agents/refresh" class="actions"><button>{{ t("agents.refresh") }}</button> <span class="muted">{{ t("agents.refresh.hint") }}</span></form>
-{% if records %}
 {% set catalog_names = catalog | map(attribute="name") | list %}
-<div class="table-wrap">
-<table>
-  <tr><th>{{ t("agents.col.name") }}</th><th title="{{ t('tip.kind.AGENT') }} / {{ t('tip.kind.MCP') }}">{{ t("agents.col.kind") }}</th><th title="{{ t('tip.col.tools') }}">{{ t("agents.col.tools") }}</th><th title="{{ t('tip.col.status') }}">{{ t("agents.col.status") }}</th><th>{{ t("agents.col.selectable") }}</th><th></th></tr>
-  {% for r in records %}
-  {% set label = t("agents.status." + r.status) %}
-  <tr><td><strong>{{ r.name }}</strong><br><span class="muted">{{ r.description }}</span></td><td title="{{ t('tip.kind.' + r.kind) if t('tip.kind.' + r.kind) != 'tip.kind.' + r.kind else '' }}">{{ r.kind }}</td><td>{{ r.tools | join(", ") }}</td>
-      <td><span class="pill {{ 'published' if r.status == 'APPROVED' else ('pending' if r.status == 'PENDING_APPROVAL' else ('rejected' if r.status == 'REJECTED' else '')) }}">{{ r.status if label.startswith("agents.status.") else label }}</span></td>
-      <td>{{ t("yes") if r.name in catalog_names else t("no") }}</td>
-      <td>{% if r.status != "APPROVED" %}<form method="post" action="/agents/{{ r.name }}/approve"><button class="primary">{{ t("agents.approve") }}</button></form>{% endif %}
-          {% if r.status not in ("REJECTED",) %}<form method="post" action="/agents/{{ r.name }}/reject"><input type="text" name="reason" placeholder="{{ t('team.reject.reason') }}"> <button class="danger">{{ t("agents.reject") }}</button></form>{% endif %}</td></tr>
-  {% endfor %}
-</table>
+{# the deck's two service-type items, reviewed in two tables: in-house MCP servers, in-house agents (unknown kinds go with agents) #}
+{% for kind, title_key in (("MCP", "agents.section.MCP"), ("AGENT", "agents.section.AGENT")) %}
+{% set rows = records | selectattr("kind", "equalto", kind) | list if kind == "MCP" else records | rejectattr("kind", "equalto", "MCP") | list %}
+<div class="card p2">
+  <h2 style="margin-top:0">{{ t(title_key) }}</h2>
+  <p class="hint">{{ t(title_key + ".hint") }}</p>
+  {% if rows %}
+  <div class="table-wrap">
+  <table>
+    <tr><th>{{ t("agents.col.name") }}</th><th title="{{ t('tip.col.tools') }}">{{ t("agents.col.tools") }}</th><th title="{{ t('tip.col.status') }}">{{ t("agents.col.status") }}</th><th>{{ t("agents.col.selectable") }}</th><th></th></tr>
+    {% for r in rows %}
+    {% set label = t("agents.status." + r.status) %}
+    <tr><td><strong>{{ r.name }}</strong>{% if r.kind not in ("MCP", "AGENT") %} <span class="tech">{{ r.kind }}</span>{% endif %}<br><span class="muted">{{ r.description }}</span></td><td>{{ r.tools | join(", ") }}</td>
+        <td><span class="pill {{ 'published' if r.status == 'APPROVED' else ('pending' if r.status == 'PENDING_APPROVAL' else ('rejected' if r.status == 'REJECTED' else '')) }}">{{ r.status if label.startswith("agents.status.") else label }}</span></td>
+        <td>{{ t("yes") if r.name in catalog_names else t("no") }}</td>
+        <td class="right">{% if r.status != "APPROVED" %}<form method="post" action="/agents/{{ r.name }}/approve" style="display:inline"><button class="primary">{{ t("agents.approve") }}</button></form>{% endif %}
+            {% if r.status not in ("REJECTED",) %}<form method="post" action="/agents/{{ r.name }}/reject" style="display:inline"><input type="text" name="reason" placeholder="{{ t('team.reject.reason') }}" style="max-width:160px"> <button class="danger">{{ t("agents.reject") }}</button></form>{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  </div>
+  {% else %}<p class="muted">{{ t(title_key + ".none") }}</p>{% endif %}
 </div>
-{% else %}<p class="muted">{{ t("agents.none") }}</p>{% endif %}
+{% endfor %}
+{% if not records %}<p class="muted">{{ t("agents.none") }}</p>{% endif %}
 {% endblock %}

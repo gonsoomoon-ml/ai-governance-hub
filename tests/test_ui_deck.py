@@ -180,3 +180,26 @@ def test_help_page_uses_the_deck_glossary_and_links_the_deck(client, settings):
         'rel="noopener"',
     ):
         assert phrase in page, phrase
+
+
+def test_agents_page_reviews_mcp_servers_and_agents_in_two_tables(client, settings, agentcore):
+    """심사 화면: 덱의 서비스형 두 항목대로 '사내 MCP 서버' 표(api-catalog) 다음에 '사내 에이전트' 표(dev-guide-qa).
+
+    Review page: the deck's two service-type items as two tables, in-house MCP servers (api-catalog) before
+    in-house agents (dev-guide-qa).
+    """
+    agentcore.records = [
+        {"name": "dev-guide-qa", "kind": "AGENT", "tools": ["ask"], "status": "PENDING_APPROVAL", "description": "Q&A"},
+        {"name": "api-catalog", "kind": "MCP", "tools": ["list_apis"], "status": "APPROVED", "description": "API specs"},
+    ]
+    login_as(client, settings)
+
+    page = client.get("/agents").text
+
+    assert (
+        page.index("사내 MCP 서버</h2>")
+        < page.index("api-catalog")
+        < page.index("사내 에이전트</h2>")
+        < page.index("dev-guide-qa")
+    )
+    assert "플러그인 저장소 화면에서 심사" in page and "사내 MCP 서버&#39;·&#39;사내 에이전트&#39; 칸" in page
