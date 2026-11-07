@@ -115,9 +115,9 @@ def test_org_page_names_the_safety_net_and_lists_the_teams_receiving_it(client, 
 
 
 def test_org_fixed_locks_are_read_only_in_the_default_policy(client, settings, store):
-    """조직 고정된 항목은 기본 정책 폼에서 라디오 대신 읽기 전용 표시.
+    """조직 고정된 항목은 기본 정책 폼에서 라디오 대신 한 줄('조직 고정(…): 항목 값')로, 값은 hidden 으로 전달.
 
-    An org-fixed lock shows as a read-only marker, not radios, in the default policy form.
+    An org-fixed lock shows as one read-only line (not radios) in the default policy form; its value travels hidden.
     """
     login_as(client, settings)
     client.post(
@@ -133,22 +133,27 @@ def test_org_fixed_locks_are_read_only_in_the_default_policy(client, settings, s
 
     page = client.get("/org").text
 
-    assert 'class="pill" title=' in page and "조직 고정: 막음</span>" in page
+    assert "조직 고정(조직 설정에서 바꿈): 개인 스킬·훅 막음" in page
     assert 'name="lock_personal_customization" value="allow"' not in page
+    assert 'type="hidden" name="lock_personal_customization" value="block"' in page
     assert 'name="lock_plugin_sources" value="company_only"' in page
 
 
-def test_editor_fields_carry_placeholders_and_plain_hints(client, settings, store):
-    """편집 폼: 저장소 칸 placeholder, MCP 범례에 백틱 없음, 에이전트 허용 시 tool-gateway 자동 추가 안내, 모델 제한 없음 토글 JS.
+def test_editor_fields_show_examples_beside_the_box_not_inside(client, settings, store):
+    """편집 폼: 예시는 칸 안 placeholder 가 아니라 칸 옆 회색 글('예: …'), 설명은 한 줄 + '자세히', MCP 범례에 백틱 없음,
+    tool-gateway 자동 추가 안내, 모델 제한 없음 토글 JS.
 
-    Editor: repo placeholders, MCP legend without backticks, the tool-gateway note, the unrestricted-models toggle script.
+    Editor: examples as grey text beside the box (not placeholders), one-line help + 'more', MCP legend without
+    backticks, the tool-gateway note, the unrestricted-models toggle script.
     """
     managed(store)
     login_as(client, settings)
 
     page = client.get(f"/teams/{TEAM}").text
 
-    assert 'placeholder="owner/repo"' in page
+    assert "예: owner/repo" in page and "예: deepwiki https://mcp.deepwiki.com/mcp" in page
+    assert 'placeholder="owner/repo"' not in page
+    assert page.count('<details class="more">') == 5 and "자세히" in page
     assert "태그 또는 브랜치" in page
     assert "`" not in page.split("관리형 MCP 서버")[1].split("</legend>")[0]
     assert "tool-gateway" in page

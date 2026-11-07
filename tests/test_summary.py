@@ -1,59 +1,23 @@
-"""어디에서 막히나 표와 진행 단계 — 정책 문서를 덱 4장의 표(대상 / 값 / 서버 / PC / 적용 시점)로, 상태를 1~4 단계로.
+"""팀 화면 요약 — '이 팀이 받는 것' 한 줄, 진행 단계(1~4), 상태·역할별 '지금 할 일' 키.
 
-Enforcement table and progress step: the policy document as the deck's table (item / value / server / PC / when),
-the status as a step 1..4.
+Team-page summaries: the 'what this team receives' line, the progress step (1..4), the 'what to do now' key.
 """
 
 from conftest import policy
 
 from hub.i18n import translator
-from hub.summary import enforcement_rows, step_of
+from hub.summary import receives_summary, step_of, todo_key
 
 t = translator("ko")
-ORG = {"locks_fixed": {}, "default_policy": {}}
 
 
-def by_item(rows: list[dict]) -> dict:
-    """행 목록 -> {item: row}.
-
-    Rows -> {item: row}.
-    """
-    return {r["item"]: r for r in rows}
+def test_receives_line_counts_what_the_published_copy_gives_pcs():
+    assert receives_summary(policy(), t) == "모델 2 · 플러그인 2 · MCP 서버 1 · 에이전트 2"
 
 
-def test_full_policy_fills_every_row_of_the_deck_table():
-    rows = by_item(enforcement_rows(policy(), ORG, t))
-    assert list(rows) == ["models", "plugins", "mcp", "agents", "prompt"]
-
-    assert rows["models"]["value"] == "claude-sonnet-5-5, claude-haiku-5-5"
-    assert "AI 게이트웨이" in rows["models"]["server"] and rows["models"]["when"] == "즉시"
-
-    assert "deck-design, infographic-design" in rows["plugins"]["value"]
-    assert rows["plugins"]["server"] == "(서버 없음)" and "회사 저장소만" in rows["plugins"]["pc"]
-    assert rows["plugins"]["when"] == "다음 세션"
-
-    assert "deepwiki" in rows["mcp"]["value"] and "다른 서버" in rows["mcp"]["pc"]
-
-    assert "dev-guide-qa, api-catalog" in rows["agents"]["value"]
-    assert "도구 게이트웨이" in rows["agents"]["server"] and "tool-gateway" in rows["agents"]["pc"]
-
-    assert "보안 프록시" in rows["prompt"]["server"] and rows["prompt"]["design_stage"] is True
-
-
-def test_unrestricted_and_empty_values_are_said_plainly():
-    rows = by_item(
-        enforcement_rows(policy(models=None, marketplace=None, plugins=[], mcp_servers={}, agents=[]), ORG, t)
-    )
-    assert rows["models"]["value"] == "전체(게이트웨이 목록)"
-    assert rows["plugins"]["value"] == "없음(설치 불가)"
-    assert rows["mcp"]["value"] == "없음"
-    assert rows["agents"]["value"] == "없음"
-
-
-def test_org_fixed_locks_win_in_the_pc_column():
-    org = {"locks_fixed": {"plugin_sources": "company_and_official"}, "default_policy": {}}
-    rows = by_item(enforcement_rows(policy(), org, t))
-    assert "공식 마켓" in rows["plugins"]["pc"] and "회사 저장소만" not in rows["plugins"]["pc"]
+def test_receives_line_says_all_models_when_unrestricted_and_zero_when_empty():
+    doc = policy(models=None, marketplace=None, plugins=[], mcp_servers={}, agents=[])
+    assert receives_summary(doc, t) == "모델 전체 · 플러그인 0 · MCP 서버 0 · 에이전트 0"
 
 
 def test_step_follows_the_draft_status():
@@ -63,3 +27,13 @@ def test_step_follows_the_draft_status():
     assert step_of({"status": "pending"}, None) == 3
     assert step_of({"status": "published"}, {"version": 1}) == 4
     assert step_of(None, {"version": 1}) == 4
+
+
+def test_todo_key_follows_role_and_step():
+    assert todo_key("leader", None, None) == "todo.leader.edit"
+    assert todo_key("leader", {"status": "rejected"}, None) == "todo.leader.edit"
+    assert todo_key("leader", {"status": "pending"}, None) == "todo.leader.pending"
+    assert todo_key("leader", None, {"version": 1}) == "todo.leader.published"
+    assert todo_key("admin", None, None) == "todo.admin.edit"
+    assert todo_key("admin", {"status": "pending"}, None) == "todo.admin.pending"
+    assert todo_key("admin", {"status": "published"}, {"version": 1}) == "todo.admin.published"

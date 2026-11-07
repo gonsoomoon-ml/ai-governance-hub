@@ -1,8 +1,11 @@
 {# shared editor fields; `doc` is the policy document, `with_models` toggles the model block #}
+{% macro more(short, long) -%}
+<details class="more"><summary class="hint">{{ short }} <span class="morelink">{{ t("more") }} ▸</span></summary><p class="hint">{{ long }}</p></details>
+{%- endmacro %}
 {% if with_models %}
 <fieldset class="p1">
   <legend>{{ t("team.models") }}</legend>
-  <p class="hint">{{ t("help.models") }}</p>
+  {{ more(t("help.models.short"), t("help.models")) }}
   {% if models_error %}<div class="err">{{ t("team.models.error") }}: {{ models_error }}</div>{% endif %}
   {% if gateway_models_differs %}<div class="warn gateway-current"><strong>{{ t("team.models.current") }}</strong>: {{ gateway_models_label }} — {{ t("team.models.current.differs") }}</div>{% endif %}
   <label><input type="checkbox" name="models_unrestricted" id="models_unrestricted" {% if doc.models is none %}checked{% endif %}> {{ t("team.models.unrestricted") }}</label>
@@ -23,21 +26,21 @@
 {% endif %}
 <fieldset class="p2">
   <legend>{{ t("team.marketplace") }}</legend>
-  <p class="hint">{{ t("help.marketplace") }}</p>
-  <label>{{ t("team.marketplace.name") }} <input type="text" name="marketplace_name"{% if examples | default(true) %} placeholder="my-extensions"{% endif %} value="{{ doc.marketplace.name if doc.marketplace else '' }}"></label>
-  <label>{{ t("team.marketplace.repo") }} <input type="text" name="marketplace_repo"{% if examples | default(true) %} placeholder="owner/repo"{% endif %} value="{{ doc.marketplace.repo if doc.marketplace else '' }}"></label>
-  <label>{{ t("team.marketplace.ref") }} <input type="text" name="marketplace_ref"{% if examples | default(true) %} placeholder="v1.0"{% endif %} value="{{ doc.marketplace.ref if doc.marketplace and doc.marketplace.ref else '' }}"></label>
-  <label>{{ t("team.plugins") }} <textarea name="plugins"{% if examples | default(true) %} placeholder="deck-design"{% endif %}>{{ plugins_text }}</textarea></label>
+  {{ more(t("help.marketplace.short"), t("help.marketplace")) }}
+  <label>{{ t("team.marketplace.name") }} <span class="ex">{{ t("ex.marketplace.name") }}</span><input type="text" name="marketplace_name" value="{{ doc.marketplace.name if doc.marketplace else '' }}"></label>
+  <label>{{ t("team.marketplace.repo") }} <span class="ex">{{ t("ex.marketplace.repo") }}</span><input type="text" name="marketplace_repo" value="{{ doc.marketplace.repo if doc.marketplace else '' }}"></label>
+  <label>{{ t("team.marketplace.ref") }} <span class="ex">{{ t("ex.marketplace.ref") }}</span><input type="text" name="marketplace_ref" value="{{ doc.marketplace.ref if doc.marketplace and doc.marketplace.ref else '' }}"></label>
+  <label>{{ t("team.plugins") }} <span class="ex">{{ t("ex.plugins") }}</span><textarea name="plugins">{{ plugins_text }}</textarea></label>
   <p class="hint">{{ t("help.plugins") }}</p>
 </fieldset>
 <fieldset class="p2">
   <legend>{{ t("team.mcp_servers") }}</legend>
-  <p class="hint">{{ t("help.mcp") }}</p>
-  <textarea name="mcp_servers"{% if examples | default(true) %} placeholder="deepwiki https://mcp.deepwiki.com/mcp"{% endif %}>{{ mcp_text }}</textarea>
+  {{ more(t("help.mcp.short"), t("help.mcp")) }}
+  <label><span class="ex">{{ t("ex.mcp") }}</span><textarea name="mcp_servers">{{ mcp_text }}</textarea></label>
 </fieldset>
 <fieldset class="p2">
   <legend>{{ t("team.agents") }}</legend>
-  <p class="hint">{{ t("help.agents") }}</p>
+  {{ more(t("help.agents.short"), t("help.agents")) }}
   {% if catalog %}
   <div class="choices">
   {% for a in catalog %}
@@ -48,19 +51,23 @@
 </fieldset>
 <fieldset class="p1">
   <legend>{{ t("team.locks") }}</legend>
-  <p class="hint">{{ t("help.locks") }}{% if org and (org.locks_fixed.values() | select | list) %} {{ t("lock.fixed.tip") }}.{% endif %}</p>
+  {{ more(t("help.locks.short"), t("help.locks")) }}
+  {% set ns = namespace(fixed=[]) %}
   {% for key, choices in lock_choices.items() %}
   {% set fixed = org.locks_fixed.get(key) if org else none %}
+  {% if fixed %}
+    {% set ns.fixed = ns.fixed + [t("lock." + key) ~ " " ~ t("lock." + key + "." + fixed)] %}
+    <input type="hidden" name="lock_{{ key }}" value="{{ fixed }}">
+  {% else %}
   <div class="lockrow">
-    <div class="lockname">{{ t("lock." + key) }}<br><span class="tech">{{ t("lock." + key + ".keys") }}</span></div>
+    <div class="lockname" title="{{ t('lock.' + key + '.keys') }}">{{ t("lock." + key) }}</div>
     <div class="lockopts">
-    {% if fixed %}<span class="pill" title="{{ t('lock.fixed.tip') }}">{{ t("team.locks.fixed") }}: {{ t("lock." + key + "." + fixed) }}</span><input type="hidden" name="lock_{{ key }}" value="{{ fixed }}">
-    {% else %}
       {% for c in choices %}
       <label><input type="radio" name="lock_{{ key }}" value="{{ c }}" {% if (doc.locks or {}).get(key, lock_defaults[key]) == c %}checked{% endif %}> {{ t("lock." + key + "." + c) }}{% if c == lock_defaults[key] %} <span class="muted">{{ t("lock.default_marker") }}</span>{% endif %}</label>
       {% endfor %}
-    {% endif %}
     </div>
   </div>
+  {% endif %}
   {% endfor %}
+  {% if ns.fixed %}<p class="hint fixedline" title="{{ t('lock.fixed.tip') }}">{{ t("lock.fixed.line").format(items=ns.fixed | join(" · ")) }}</p>{% endif %}
 </fieldset>

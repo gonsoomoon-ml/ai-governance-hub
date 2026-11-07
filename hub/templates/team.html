@@ -23,48 +23,50 @@
 
 <aside>
   <div class="card status {{ status }}">
-    <div><strong>{{ t("team.draft_label") }}</strong> {% with item=draft %}{% include "_status.html" %}{% endwith %}
-      {% if pending %}<div class="muted">{{ t("team.submitted_by") }}: {{ draft.submitted_by }} · {{ ts(draft.submitted_at) }}</div>{% endif %}
-    </div>
-    {% if draft and draft.status == "rejected" and draft.rejected_reason %}<div class="err">{{ t("team.rejected_reason") }}: {{ draft.rejected_reason }}</div>{% endif %}
-    <div style="margin-top:6px"><strong>{{ t("team.published_label") }}</strong>
+    <h2 style="margin-top:0">{{ t("todo.title") }}</h2>
+    <p class="todo">{{ t(todo) }}</p>
+    <div class="meta"><strong>{{ t("team.draft_label") }}</strong> {% with item=draft %}{% include "_status.html" %}{% endwith %}{% if pending %} · {{ t("team.submitted_by") }}: {{ draft.submitted_by }} · {{ ts(draft.submitted_at) }}{% endif %}
+      <br><strong>{{ t("team.published_label") }}</strong>
       {% if published %}v{{ published.version }} · {{ ts(published.published_at) }} · {{ published.published_by }} <span class="tech" title="{{ published.version_hash }}">{{ published.version_hash[:8] }}</span>
       {% else %}<span class="muted">{{ t("team.no_published") }}</span>{% endif %}
     </div>
-    <div style="margin-top:8px">{% with preview_title=t("preview.title.team") ~ " " ~ t("team.preview.basis." + preview_basis) %}{% include "_preview.html" %}{% endwith %}</div>
+    {% if draft and draft.status == "rejected" and draft.rejected_reason %}<div class="err">{{ t("team.rejected_reason") }}: {{ draft.rejected_reason }}</div>{% endif %}
 
     <div class="actions">
       {% if session.role == "admin" and pending %}
       <form method="post" action="/teams/{{ team.team_id }}/approve"><button class="primary">{{ t("team.approve") }}</button></form>
       <form method="post" action="/teams/{{ team.team_id }}/reject"><input type="text" name="reason" placeholder="{{ t('team.reject.reason') }}" style="max-width:200px"> <button class="danger">{{ t("team.reject") }}</button></form>
+      {% elif session.role == "admin" %}
+      <button class="primary" name="action" value="publish" form="policy-form" title="{{ t('tip.publish') }}" data-busy="{{ t('busy') }}">{{ t("team.save_publish") }}</button>
+      {% elif pending %}
+      <button class="primary" name="action" value="save" form="policy-form" data-busy="{{ t('busy') }}">{{ t("team.save_cancel") }}</button>
+      {% else %}
+      <button class="primary" name="action" value="submit" form="policy-form" title="{{ t('tip.submit') }}" data-busy="{{ t('busy') }}">{{ t("team.save_submit") }}</button>
       {% endif %}
-      {% if not pending %}<button class="primary" name="action" value="submit" form="policy-form" title="{{ t('tip.submit') }}" data-busy="{{ t('busy') }}">{{ t("team.save_submit") }}</button>{% endif %}
-      <button class="{{ 'primary' if pending and session.role != 'admin' else 'secondary' }}" name="action" value="save" form="policy-form" data-busy="{{ t('busy') }}">{{ t("team.save_cancel") if pending else t("team.save") }}</button>
-      {% if session.role == "admin" %}<button class="secondary" name="action" value="publish" form="policy-form" title="{{ t('tip.publish') }}" data-busy="{{ t('busy') }}">{{ t("team.save_publish") }}</button>{% endif %}
     </div>
+    <div class="actions minor">
+      {% if session.role == "admin" and pending %}
+      <button class="secondary" name="action" value="save" form="policy-form" data-busy="{{ t('busy') }}">{{ t("team.save_cancel") }}</button>
+      <button class="secondary" name="action" value="publish" form="policy-form" title="{{ t('tip.publish') }}" data-busy="{{ t('busy') }}">{{ t("team.save_publish") }}</button>
+      {% elif session.role == "admin" %}
+      <button class="secondary" name="action" value="save" form="policy-form" data-busy="{{ t('busy') }}">{{ t("team.save") }}</button>
+      <button class="secondary" name="action" value="submit" form="policy-form" title="{{ t('tip.submit') }}" data-busy="{{ t('busy') }}">{{ t("team.save_submit") }}</button>
+      {% elif not pending %}
+      <button class="secondary" name="action" value="save" form="policy-form" data-busy="{{ t('busy') }}">{{ t("team.save") }}</button>
+      {% endif %}
+      {% with preview_title=t("preview.title.team") ~ " " ~ t("team.preview.basis." + preview_basis) %}{% include "_preview.html" %}{% endwith %}
+    </div>
+    {% if published %}<p class="receives"><strong>{{ t("team.receives") }}:</strong> {{ receives }}</p>{% endif %}
   </div>
 
   {% if changes %}
   <div class="card">
     <h2>{{ t("team.changes") }}{% if not published %} <span class="muted">({{ t("team.changes.new") }})</span>{% endif %}</h2>
-    <table>
-      <tr><th>{{ t("team.changes.col.field") }}</th><th>{{ t("team.changes.before") }}</th><th>{{ t("team.changes.after") }}</th></tr>
-      {% for c in changes %}<tr><td>{{ t(c.field) }}</td><td class="muted">{{ c.before or t("changes.empty") }}</td><td>{{ c.after or t("changes.empty") }}</td></tr>{% endfor %}
-    </table>
+    <dl class="changes">
+      {% for c in changes %}<dt>{{ t(c.field) }}</dt><dd><span class="muted">{{ c.before or t("changes.empty") }}</span> → {{ c.after or t("changes.empty") }}</dd>{% endfor %}
+    </dl>
   </div>
   {% endif %}
-
-  <div class="card p1">
-    <h2>{{ t("enf.title") }}</h2>
-    <div class="table-wrap">
-    <table>
-      <tr><th>{{ t("enf.col.item") }}</th><th>{{ t("enf.col.value") }}</th><th>{{ t("enf.col.server") }}</th><th>{{ t("enf.col.pc") }}</th><th>{{ t("enf.col.when") }}</th></tr>
-      {% for r in enforcement %}
-      <tr{% if r.design_stage %} class="dashed"{% endif %}><td><strong>{{ r.label }}</strong></td><td>{{ r.value }}</td><td>{{ r.server }}</td><td>{{ r.pc }}</td><td>{{ r.when }}</td></tr>
-      {% endfor %}
-    </table>
-    </div>
-  </div>
 </aside>
 </div>
 

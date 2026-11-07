@@ -145,7 +145,7 @@
   legend { color: var(--ink); font-weight: 600; font-size: 1.05em; padding: 0 6px; }
   .choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2px 16px; }
   .choices label { margin: 3px 0; }
-  .lockrow { display: grid; grid-template-columns: 240px 1fr; gap: 6px 16px; padding: 8px 0; border-top: 1px dashed var(--line); align-items: start; }
+  .lockrow { display: grid; grid-template-columns: 180px 1fr; gap: 6px 16px; padding: 8px 0; border-top: 1px dashed var(--line); align-items: start; }
   .lockrow:first-of-type { border-top: 0; }
   .lockrow .lockname { font-weight: 600; }
   .lockrow .lockopts label { display: inline-block; margin: 2px 16px 2px 0; }
@@ -171,6 +171,18 @@
   ol.steps .step.done { background: var(--pill-ok-bg); color: var(--pill-ok-ink); }
   .back { display: inline-block; margin-bottom: 8px; text-decoration: none; }
   details summary { cursor: pointer; }
+  details.more > summary { list-style: none; margin: 2px 0 10px; }
+  details.more > summary::-webkit-details-marker { display: none; }
+  details.more .morelink { color: var(--coral-text); font-size: 0.85em; white-space: nowrap; }
+  details.more[open] .morelink { display: none; }
+  details.more > p.hint { margin: -6px 0 10px; }
+  .ex { color: var(--muted); font-size: 0.85em; margin-left: 6px; }
+  .fixedline { margin: 10px 0 0; }
+  .card.status .todo { margin: 4px 0 8px; font-size: 1.05em; }
+  .card.status .meta { color: var(--muted); font-size: 0.9em; margin: 0 0 4px; line-height: 1.6; }
+  .card.status .actions.minor { margin-top: 8px; }
+  .card.status .receives { margin: 12px 0 0; padding-top: 10px; border-top: 1px dashed var(--line); }
+  dl.changes { margin: 0; } dl.changes dt { font-weight: 600; margin-top: 8px; } dl.changes dd { margin: 2px 0 0; }
   details.fold > summary { font-size: 1.15em; list-style: none; }
   details.fold > summary::-webkit-details-marker { display: none; }
   details.fold > summary::before { content: "▸ "; color: var(--muted); }

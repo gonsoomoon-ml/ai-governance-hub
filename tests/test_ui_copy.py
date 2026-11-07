@@ -55,9 +55,9 @@ def test_help_page_is_open_to_leaders_and_linked_from_the_header(client, setting
 
 
 def test_team_page_shows_progress_summary_back_link_and_two_columns(client, settings, store):
-    """팀 화면: 진행 단계 띠(현재 1단계), 효과 요약 카드, '← 팀 목록', 2단 배치, 처리 중 스크립트.
+    """팀 화면: 진행 단계 띠(현재 1단계), '지금 할 일' 카드, '← 팀 목록', 2단 배치, 처리 중 스크립트.
 
-    Team page: progress strip (step 1 current), effect summary card, back link, two-column layout, busy script.
+    Team page: progress strip (step 1 current), the 'what to do now' card, back link, two-column layout, busy script.
     """
     managed(store)
     login_as(client, settings)
@@ -66,7 +66,7 @@ def test_team_page_shows_progress_summary_back_link_and_two_columns(client, sett
 
     assert page.count('class="step current"') == 1
     assert "① 규칙 입력" in page and "④ PC 적용" in page
-    assert "어디에서 막히나" in page
+    assert "지금 할 일" in page
     assert "← 팀 목록" in page
     assert 'class="layout"' in page and "<aside" in page
     assert "처리 중" in page

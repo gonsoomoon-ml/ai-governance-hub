@@ -35,7 +35,7 @@ from hub.diff import policy_diff
 from hub.fragment import LOCK_CHOICES, STRICT_DEFAULTS, build_fragment, empty_policy, validate_policy, version_of
 from hub.gateway_api import GatewayApiError
 from hub.i18n import LANG_COOKIE, THEME_COOKIE, lang_of, theme_of, translator
-from hub.summary import enforcement_rows, step_of
+from hub.summary import receives_summary, step_of, todo_key
 from hub.timefmt import fmt_ts
 
 router = APIRouter()
@@ -651,8 +651,8 @@ def _render_editor(
     org = store.org_settings()
     changes = policy_diff((published or {}).get("doc"), draft["doc"], t) if draft else []
     preview_basis = "draft" if draft else ("published" if published else "empty")
-    enforcement = enforcement_rows(doc, org, t)
     step = step_of(draft, published)
+    receives = receives_summary(published["doc"], t) if published else ""
     preview = _preview_context(request, doc, f"/teams/{team_id}/preview.json")
     return _render(
         request,
@@ -664,7 +664,8 @@ def _render_editor(
         published=published,
         changes=changes,
         preview_basis=preview_basis,
-        enforcement=enforcement,
+        receives=receives,
+        todo=todo_key(session["role"], draft, published),
         step=step,
         **preview,
         models=models,

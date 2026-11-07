@@ -53,23 +53,24 @@ def test_teams_landing_states_one_hub_four_enforcement_points(client, settings, 
         assert phrase in page, phrase
 
 
-def test_team_page_shows_the_enforcement_table_instead_of_sentences(client, settings, store):
-    """팀 화면 오른쪽 패널: 덱 4장의 표(대상 / 이 팀의 값 / 서버에서 막는 곳 / 직원 PC 에서 막는 곳 / 적용 시점).
+def test_team_page_shows_what_the_team_receives_after_publish(client, settings, store):
+    """팀 화면 오른쪽 카드: 발행 전엔 '지금 할 일' 만, 발행 뒤 '이 팀이 받는 것' 한 줄(개수). 설명 표는 없다.
 
-    Team page aside: the deck's table (item / this team's value / server enforcement / PC enforcement / when).
+    Team page card: before publish only 'what to do now'; after publish one 'what this team receives' line
+    with counts. No explanatory table.
     """
     managed(store)
     login_as(client, settings)
-    client.post(SAVE, data=FORM)
 
     page = client.get(f"/teams/{TEAM}").text
+    assert "지금 할 일" in page and "이 팀이 받는 것" not in page
+    assert "어디에서 막히나" not in page and "서버에서 막는 곳" not in page
 
-    for phrase in ("어디에서 막히나", "서버에서 막는 곳", "직원 PC 에서 막는 곳", "적용 시점", "즉시", "다음 세션"):
-        assert phrase in page, phrase
-    assert "claude-sonnet-5-5, claude-haiku-5-5" in page
-    assert "AI 게이트웨이" in page and "도구 게이트웨이" in page
-    assert "보안 프록시" in page and "설계 단계" in page
-    assert "발행되면 PC 에서 일어나는 일" not in page
+    client.post(SAVE, data={**FORM, "action": "publish"})
+    page = client.get(f"/teams/{TEAM}").text
+    assert "이 팀이 받는 것" in page
+    assert "모델 2 · 플러그인 2 · MCP 서버 1 · 에이전트 2" in page
+    assert "발행됐습니다" in page
 
 
 def test_lock_rows_name_the_real_setting_keys(client, settings, store):

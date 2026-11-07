@@ -3,4 +3,4 @@ name: governance-hub
 description: AI Governance Hub — per-team Claude Code policy (plugins, MCP servers, in-house agents, locks); feeds gateway-proxy GET /v1/policy
 type: application
 version: 0.1.0
-appVersion: "0.1.10"
+appVersion: "0.1.11"
