@@ -37,7 +37,6 @@ from hub.fragment import (
     _REPO,
     LOCK_CHOICES,
     STRICT_DEFAULTS,
-    _validate_server,
     build_fragment,
     empty_policy,
     validate_policy,
@@ -423,37 +422,6 @@ def marketplace_delete(request: Request, name: str) -> Response:
     return RedirectResponse("/org?msg=msg.market_deleted", status_code=302)
 
 
-@router.post("/org/mcp-servers")
-async def mcp_server_add(request: Request) -> Response:
-    """승인한 MCP 서버 등록(이름 + https 주소).
-
-    Register an approved MCP server (name + https URL).
-    """
-    session = require_admin(request)
-    form = await request.form()
-    name, url = (form.get("name") or "").strip(), (form.get("url") or "").strip()
-    errors = _validate_server(name, {"url": url})
-    if errors:
-        return _render_org(request, session, errors=errors, org=None, status_code=400)
-    request.app.state.store.put_mcp_server(
-        {"name": name, "url": url, "description": (form.get("description") or "").strip()}
-    )
-    request.app.state.store.audit("mcp_added", actor=session["email"], detail={"name": name, "url": url})
-    return RedirectResponse("/org?msg=msg.mcp_added", status_code=302)
-
-
-@router.post("/org/mcp-servers/{name}/delete")
-def mcp_server_delete(request: Request, name: str) -> Response:
-    """MCP 서버를 카탈로그에서 뺀다.
-
-    Remove an MCP server from the catalog.
-    """
-    session = require_admin(request)
-    request.app.state.store.delete_mcp_server(name)
-    request.app.state.store.audit("mcp_deleted", actor=session["email"], detail={"name": name})
-    return RedirectResponse("/org?msg=msg.mcp_deleted", status_code=302)
-
-
 @router.get("/agents")
 def agents_page(request: Request) -> Response:
     """사내 에이전트: 카탈로그(허브 표) + 레지스트리 레코드(AgentCore).
@@ -555,12 +523,13 @@ def audit_page(request: Request) -> Response:
 
 def policy_from_form(form: Any, catalogs: dict) -> tuple[dict, list[str]]:
     """HTML 폼 -> 정책 문서 + 카탈로그 오류. 모델은 체크박스 목록 또는 "제한 없음"(None).
-    저장소·플러그인·MCP 서버는 조직 카탈로그에서 고른 이름이고, 문서에는 카탈로그의 repo·ref·url 을 복사해
-    넣는다(발행본이 카탈로그와 무관하게 완결되도록). 카탈로그에 없는 이름은 오류.
+    저장소·플러그인은 조직 카탈로그에서 고른 이름이고, 문서에는 카탈로그의 repo·ref 를 복사해 넣는다
+    (발행본이 카탈로그와 무관하게 완결되도록). 카탈로그에 없는 이름은 오류. MCP 서버는 항상 비움(PC 는 도구 게이트웨이만).
 
     HTML form -> policy document + catalog errors. Models are the checked list or "unrestricted" (None).
-    Marketplace, plugins and MCP servers are names picked from the org catalogs; the document carries a
-    copy of the catalog's repo/ref/url so a published copy stays self-contained. Unknown names are errors.
+    Marketplace and plugins are names picked from the org catalog; the document carries a copy of the
+    catalog's repo/ref so a published copy stays self-contained. Unknown names are errors. MCP servers stay
+    empty (PCs connect to the tool gateway only).
     """
     errors: list[str] = []
     unrestricted = bool(form.get("models_unrestricted"))
@@ -586,16 +555,8 @@ def policy_from_form(form: Any, catalogs: dict) -> tuple[dict, list[str]]:
         if unknown:
             errors.append(f"plugins: not in marketplace {market_name}: {', '.join(unknown)}")
 
-    servers_catalog = {s["name"]: s for s in catalogs.get("mcp_servers") or []}
+    # no direct MCP servers: PCs connect to the tool gateway only (deck slide 4); the key stays for the fragment
     servers: dict = {}
-    for line in _multi(form, "mcp_servers"):
-        name = line.split()[0]
-        server = servers_catalog.get(name)
-        if server is None:
-            errors.append(f"mcp_servers: {name} is not registered in organization settings")
-            servers[name] = {"url": ""}
-        else:
-            servers[name] = {"url": server["url"]}
 
     locks = {key: (form.get(f"lock_{key}") or STRICT_DEFAULTS[key]) for key in LOCK_CHOICES}
     doc = {
@@ -623,12 +584,11 @@ def _multi(form: Any, key: str) -> list[str]:
 
 
 def _catalogs(store: Any) -> dict:
-    """팀이 고르는 조직 카탈로그 둘(회사 저장소·승인 MCP 서버) — 폼 해석과 화면에 같이 쓴다.
+    """팀이 고르는 조직 카탈로그(회사 저장소) — 폼 해석과 화면에 같이 쓴다.
 
-    The two org catalogs teams pick from (company marketplaces, approved MCP servers), used by both
-    form parsing and rendering.
+    The org catalog teams pick from (company marketplaces), used by both form parsing and rendering.
     """
-    return {"markets": store.list_marketplaces(), "mcp_servers": store.list_mcp_servers()}
+    return {"markets": store.list_marketplaces()}
 
 
 def _publish(request: Request, session: dict, team_id: str, doc: dict, *, seen: list[str] | None = None) -> int:
@@ -817,7 +777,6 @@ def _render_editor(
         receives=receives,
         todo=todo_key(session["role"], draft, published),
         markets=store.list_marketplaces(),
-        servers=store.list_mcp_servers(),
         step=step,
         **preview,
         models=models,
@@ -830,7 +789,6 @@ def _render_editor(
         errors=errors or [],
         lock_choices=LOCK_CHOICES,
         status_code=status_code,
-        mcp_text="\n".join(f"{n} {s.get('url', '')}" for n, s in (doc.get("mcp_servers") or {}).items()),
         plugins_text="\n".join(doc.get("plugins") or []),
     )
 
@@ -854,27 +812,21 @@ def _render_org(
         default_summary=_default_policy_summary(_t(request), doc),
         receiving=_teams_receiving_default(request),
         markets=store.list_marketplaces(),
-        servers=store.list_mcp_servers(),
         **_preview_context(request, doc, "/org/preview.json"),
         catalog=store.list_agents(),
         errors=errors or [],
         lock_choices=LOCK_CHOICES,
         status_code=status_code,
-        mcp_text="\n".join(f"{n} {s.get('url', '')}" for n, s in (doc.get("mcp_servers") or {}).items()),
         plugins_text="\n".join(doc.get("plugins") or []),
     )
 
 
 def _default_policy_summary(t, doc: dict) -> str:
-    """안전망 절의 요약 한 줄 — 비어 있으면 '잠금만 내려갑니다', 아니면 플러그인·MCP·에이전트 개수.
+    """안전망 절의 요약 한 줄 — 비어 있으면 '잠금만 내려갑니다', 아니면 플러그인·에이전트 개수.
 
-    One-line summary of the safety net: 'only the locks go out' when empty, else plugin/MCP/agent counts.
+    One-line summary of the safety net: 'only the locks go out' when empty, else plugin/agent counts.
     """
-    counts = {
-        "plugins": len(doc.get("plugins") or []),
-        "mcp": len(doc.get("mcp_servers") or {}),
-        "agents": len(doc.get("agents") or []),
-    }
+    counts = {"plugins": len(doc.get("plugins") or []), "agents": len(doc.get("agents") or [])}
     if not doc.get("marketplace") and not any(counts.values()):
         return t("org.default_policy.empty")
     return t("org.default_policy.set").format(**counts)

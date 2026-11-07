@@ -7,7 +7,6 @@
   TEAM#<id> / VERSION#<n>        발행 이력
   AGENTS / <name>                Registry 에서 복사한 승인 에이전트 카탈로그(도구 이름 포함)
   MARKETS / <name>               회사 플러그인 저장소 카탈로그(repo·ref·플러그인 목록, GitHub 에서 읽음)
-  MCPSERVERS / <name>            관리자가 승인한 MCP 서버 카탈로그(이름·https 주소)
   AUDIT / <ns>#<uuid>            감사 기록
 
 DynamoDB 를 고른 이유: Fargate 라 디스크가 없고, Aurora 에 DB 를 새로 파는 것보다 일이 적다.
@@ -295,28 +294,6 @@ class Store:
         Delete one marketplace (published policies carry their own copy and are unaffected).
         """
         self._table.delete_item(Key={"pk": "MARKETS", "sk": name})
-
-    def list_mcp_servers(self) -> list[dict]:
-        """승인한 MCP 서버 카탈로그(이름순).
-
-        The approved MCP server catalog, by name.
-        """
-        resp = self._table.query(KeyConditionExpression=Key("pk").eq("MCPSERVERS"))
-        return sorted((_strip(i) for i in resp.get("Items", [])), key=lambda s: s["name"])
-
-    def put_mcp_server(self, server: dict) -> None:
-        """MCP 서버 하나 저장/교체({name, url, description}).
-
-        Save or replace one MCP server ({name, url, description}).
-        """
-        self._put({"pk": "MCPSERVERS", "sk": server["name"], **server, "updated_at": _now()})
-
-    def delete_mcp_server(self, name: str) -> None:
-        """MCP 서버 하나 삭제.
-
-        Delete one MCP server.
-        """
-        self._table.delete_item(Key={"pk": "MCPSERVERS", "sk": name})
 
     # --- low level ---
 

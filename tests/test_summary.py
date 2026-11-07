@@ -12,12 +12,12 @@ t = translator("ko")
 
 
 def test_receives_line_counts_what_the_published_copy_gives_pcs():
-    assert receives_summary(policy(), t) == "모델 2 · 플러그인 2 · MCP 서버 1 · 에이전트 2"
+    assert receives_summary(policy(), t) == "모델 2 · 플러그인 2 · 에이전트 2"
 
 
 def test_receives_line_says_all_models_when_unrestricted_and_zero_when_empty():
     doc = policy(models=None, marketplace=None, plugins=[], mcp_servers={}, agents=[])
-    assert receives_summary(doc, t) == "모델 전체 · 플러그인 0 · MCP 서버 0 · 에이전트 0"
+    assert receives_summary(doc, t) == "모델 전체 · 플러그인 0 · 에이전트 0"
 
 
 def test_step_follows_the_draft_status():

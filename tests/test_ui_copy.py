@@ -91,7 +91,7 @@ def test_field_help_lines_explain_each_section(client, settings, store):
     for phrase in (
         "게이트웨이가 서버에서 막으므로",
         "태그를 적으면",
-        "외부 도구 서버(MCP)",
+        "도구 게이트웨이",
         "스스로 바꿀 수 있는 범위",
     ):
         assert phrase in page, phrase

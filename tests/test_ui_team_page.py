@@ -37,12 +37,12 @@ def test_action_submit_with_errors_changes_nothing(client, settings, store):
     login_as(client, settings, email=LEADER_EMAIL, role="leader", teams=[TEAM])
     client.post(SAVE, data=FORM)
 
-    resp = client.post(SAVE, data={**FORM, "mcp_servers": "bad http://plain", "action": "submit"})
+    resp = client.post(SAVE, data={**FORM, "plugins": ["deck-design", "not-there"], "action": "submit"})
 
     assert resp.status_code == 400
     draft = store.get_policy(TEAM, "DRAFT")
     assert draft["status"] == "draft"
-    assert draft["doc"]["mcp_servers"] == {"deepwiki": {"url": "https://mcp.deepwiki.com/mcp"}}
+    assert draft["doc"]["mcp_servers"] == {}
 
 
 def test_admin_action_publish_saves_and_publishes_in_one_step(client, settings, store):

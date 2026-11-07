@@ -65,23 +65,6 @@
   {% endif %}
 </fieldset>
 <fieldset class="p2">
-  <legend>{{ t("team.mcp_servers") }}</legend>
-  {{ more(t("help.mcp.short"), t("help.mcp")) }}
-  {% set picked = (doc.mcp_servers or {}).keys() | list %}
-  {% if servers or picked %}
-  <div class="choices">
-    {% for s in servers %}
-    <label><input type="checkbox" name="mcp_servers" value="{{ s.name }}" {% if s.name in picked %}checked{% endif %}> <strong>{{ s.name }}</strong> <span class="muted">{{ s.description or s.url }}</span></label>
-    {% endfor %}
-    {% for name in picked if name not in (servers | map(attribute="name") | list) %}
-    <label><input type="checkbox" name="mcp_servers" value="{{ name }}" checked> <strong>{{ name }}</strong> <span class="muted">{{ t("team.catalog.missing") }}</span></label>
-    {% endfor %}
-  </div>
-  {% else %}
-  <p class="muted">{{ t("team.catalog.empty.mcp") }}{% if session and session.role == "admin" %} <a href="/org">{{ t("nav.org") }} ▸</a>{% endif %}</p>
-  {% endif %}
-</fieldset>
-<fieldset class="p2">
   <legend>{{ t("team.agents") }}</legend>
   {{ more(t("help.agents.short"), t("help.agents")) }}
   {% if catalog %}

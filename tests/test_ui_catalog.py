@@ -1,7 +1,9 @@
-"""조직 카탈로그(0.1.12): 관리자가 회사 저장소(GitHub 에서 읽음)·MCP 서버를 등록하고, 팀은 그 목록에서 고른다.
+"""조직 카탈로그(0.1.12·0.1.13): 관리자가 회사 저장소(GitHub 에서 읽음)를 등록하고, 팀은 그 목록에서 고른다.
+PC 의 MCP 연결은 도구 게이트웨이 하나뿐(덱 4장)이라 외부 MCP 서버 카탈로그는 없다.
 
-Org catalogs (0.1.12): an administrator registers company repositories (read from GitHub) and MCP servers;
-teams pick from those lists. Documents carry their own copy of repo/ref/url.
+Org catalog (0.1.12, 0.1.13): an administrator registers company repositories (read from GitHub); teams pick
+from that list. PCs connect to the tool gateway only (deck slide 4), so there is no external MCP catalog.
+Documents carry their own copy of repo/ref.
 """
 
 from conftest import LEADER_EMAIL, TEAM, login_as
@@ -62,40 +64,16 @@ def test_refresh_rereads_the_stored_ref_and_delete_removes_it(client, settings, 
     assert client.post("/org/marketplaces/ghost/refresh").status_code == 404
 
 
-def test_admin_registers_and_removes_mcp_servers(client, settings, store):
-    login_as(client, settings)
-
-    ok = client.post(
-        "/org/mcp-servers", data={"name": "docs", "url": "https://docs.example.com/mcp", "description": "Docs"}
-    )
-    assert ok.status_code == 302
-    assert [s["name"] for s in store.list_mcp_servers()] == ["deepwiki", "docs"]
-    assert "docs.example.com" in client.get("/org").text
-
-    bad = client.post("/org/mcp-servers", data={"name": "plain", "url": "http://plain.example/mcp"})
-    assert bad.status_code == 400 and "https://" in bad.text
-    reserved = client.post("/org/mcp-servers", data={"name": "tool-gateway", "url": "https://x.example/mcp"})
-    assert reserved.status_code == 400
-
-    assert client.post("/org/mcp-servers/docs/delete").status_code == 302
-    assert [s["name"] for s in store.list_mcp_servers()] == ["deepwiki"]
-
-
 def test_catalog_routes_need_an_admin(client, settings, store):
     login_as(client, settings, email=LEADER_EMAIL, role="leader", teams=(TEAM,))
-    for path in (
-        "/org/marketplaces",
-        "/org/mcp-servers",
-        "/org/marketplaces/example-extensions/delete",
-        "/org/mcp-servers/deepwiki/delete",
-    ):
-        assert client.post(path, data={"repo": "a/b", "name": "n", "url": "https://x/mcp"}).status_code == 403, path
+    for path in ("/org/marketplaces", "/org/marketplaces/example-extensions/delete"):
+        assert client.post(path, data={"repo": "a/b", "name": "n"}).status_code == 403, path
 
 
 def test_saved_document_copies_repo_ref_and_url_from_the_catalog(client, settings, store):
-    """팀 저장: 폼은 이름만 보내고, 문서에는 카탈로그의 repo·ref·url 이 복사돼 발행본이 완결된다.
+    """팀 저장: 폼은 이름만 보내고, 문서에는 카탈로그의 repo·ref 가 복사돼 발행본이 완결된다.
 
-    Team save: the form sends names only; the document carries the catalog's repo/ref/url, so the published copy
+    Team save: the form sends names only; the document carries the catalog's repo/ref, so the published copy
     stays self-contained (deleting the catalog entry later does not change it).
     """
     managed(store)
@@ -109,7 +87,7 @@ def test_saved_document_copies_repo_ref_and_url_from_the_catalog(client, setting
         "ref": "demo-2026-11",
     }
     assert doc["plugins"] == ["deck-design", "infographic-design"]
-    assert doc["mcp_servers"] == {"deepwiki": {"url": "https://mcp.deepwiki.com/mcp"}}
+    assert doc["mcp_servers"] == {}  # PCs connect to the tool gateway only (deck slide 4)
 
     client.post("/org/marketplaces/example-extensions/delete")
     assert store.get_policy(TEAM, "PUBLISHED")["doc"]["marketplace"]["repo"] == "example/claude-extensions"
@@ -125,22 +103,19 @@ def test_names_outside_the_catalogs_are_refused(client, settings, store):
     assert market.status_code == 400 and "unknown-market is not registered" in market.text
     plugin = client.post(SAVE, data={**FORM, "plugins": ["deck-design", "not-there"]})
     assert plugin.status_code == 400 and "not in marketplace example-extensions: not-there" in plugin.text
-    server = client.post(SAVE, data={**FORM, "mcp_servers": ["deepwiki", "rogue"]})
-    assert server.status_code == 400 and "rogue is not registered" in server.text
     assert store.get_policy(TEAM, "DRAFT") is None
 
 
 def test_team_page_explains_empty_catalogs_and_links_admins_to_org_settings(client, settings, store):
     managed(store)
     store.delete_marketplace("example-extensions")
-    store.delete_mcp_server("deepwiki")
 
     login_as(client, settings, email=LEADER_EMAIL, role="leader", teams=(TEAM,))
     page = client.get(f"/teams/{TEAM}").text
-    assert "회사 저장소를 등록하면 여기서 고릅니다" in page and "MCP 서버를 등록하면 여기서 고릅니다" in page
+    assert "회사 저장소를 등록하면 여기서 고릅니다" in page and "관리형 MCP 서버" not in page
     assert 'href="/org"' not in page.split("</h1>")[1].split("<aside")[0]  # leaders get no org link in the form
 
     client.cookies.clear()
     login_as(client, settings)
     page = client.get(f"/teams/{TEAM}").text
-    assert page.split("</h1>")[1].split("<aside")[0].count('href="/org"') == 2
+    assert page.split("</h1>")[1].split("<aside")[0].count('href="/org"') == 1

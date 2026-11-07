@@ -69,7 +69,7 @@ def test_team_page_shows_what_the_team_receives_after_publish(client, settings, 
     client.post(SAVE, data={**FORM, "action": "publish"})
     page = client.get(f"/teams/{TEAM}").text
     assert "이 팀이 받는 것" in page
-    assert "모델 2 · 플러그인 2 · MCP 서버 1 · 에이전트 2" in page
+    assert "모델 2 · 플러그인 2 · 에이전트 2" in page
     assert "발행됐습니다" in page
 
 

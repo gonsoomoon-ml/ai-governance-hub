@@ -140,11 +140,11 @@ def test_org_fixed_locks_are_read_only_in_the_default_policy(client, settings, s
 
 
 def test_editor_fields_are_pick_lists_from_the_org_catalogs(client, settings, store):
-    """편집 폼: 저장소는 드롭다운, 플러그인·MCP 서버는 카탈로그의 체크박스(자유 입력 없음), 설명은 한 줄 + '자세히',
-    MCP 범례에 백틱 없음, tool-gateway 자동 추가 안내, 모델 제한 없음 토글 JS.
+    """편집 폼: 저장소는 드롭다운, 플러그인은 카탈로그의 체크박스(자유 입력 없음, MCP 절 없음), 설명은 한 줄 + '자세히',
+    tool-gateway 자동 추가 안내, 모델 제한 없음 토글 JS.
 
-    Editor: repository as a dropdown, plugins and MCP servers as checkboxes from the catalogs (no free text),
-    one-line help + 'more', MCP legend without backticks, the tool-gateway note, the unrestricted-models toggle.
+    Editor: repository as a dropdown, plugins as checkboxes from the catalog (no free text, no MCP section),
+    one-line help + 'more', the tool-gateway note, the unrestricted-models toggle.
     """
     managed(store)
     login_as(client, settings)
@@ -152,10 +152,9 @@ def test_editor_fields_are_pick_lists_from_the_org_catalogs(client, settings, st
     page = client.get(f"/teams/{TEAM}").text
 
     assert 'name="marketplace"' in page and "example-extensions — example/claude-extensions @ demo-2026-11" in page
-    assert 'name="plugins" value="deck-design"' in page and 'name="mcp_servers" value="deepwiki"' in page
+    assert 'name="plugins" value="deck-design"' in page and 'name="mcp_servers"' not in page
     assert 'placeholder="owner/repo"' not in page and "marketplace_repo" not in page
-    assert page.count('<details class="more">') == 5 and "자세히" in page
-    assert "`" not in page.split("관리형 MCP 서버")[1].split("</legend>")[0]
+    assert page.count('<details class="more">') == 4 and "자세히" in page
     assert "tool-gateway" in page
     assert "models_unrestricted" in page and "disabled" in page
 
@@ -181,9 +180,7 @@ def test_org_page_folds_the_safety_net_and_summarizes_it(client, settings, store
         "/org", data={**org_form, **{k: v for k, v in FORM.items() if k != "models"}, "models_unrestricted": "on"}
     )
     page = client.get("/org").text
-    assert "설정됨(플러그인 2 · MCP 서버 1 · 에이전트 2)" in page
+    assert "설정됨(플러그인 2 · 에이전트 2)" in page
 
-    bad = client.post(
-        "/org", data={**org_form, "mcp_servers": "bad http://insecure.example/mcp", "models_unrestricted": "on"}
-    )
+    bad = client.post("/org", data={**org_form, "marketplace": "ghost-market", "models_unrestricted": "on"})
     assert bad.status_code == 400 and '<details class="card fold" open>' in bad.text

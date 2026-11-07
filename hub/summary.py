@@ -10,15 +10,14 @@ T = Callable[[str], str]
 
 
 def receives_summary(doc: dict, t: T) -> str:
-    """발행본 문서 -> '모델 n · 플러그인 n · MCP 서버 n · 에이전트 n' (모델 제한 없음이면 '전체').
+    """발행본 문서 -> '모델 n · 플러그인 n · 에이전트 n' (모델 제한 없음이면 '전체').
 
-    Published document -> 'models n · plugins n · MCP servers n · agents n' ('all' when unrestricted).
+    Published document -> 'models n · plugins n · agents n' ('all' when unrestricted).
     """
     models = doc.get("models")
     return t("team.receives.summary").format(
         models=t("team.receives.models.all") if models is None else len(models),
         plugins=len(doc.get("plugins") or []),
-        mcp=len(doc.get("mcp_servers") or {}),
         agents=len(doc.get("agents") or []),
     )
 

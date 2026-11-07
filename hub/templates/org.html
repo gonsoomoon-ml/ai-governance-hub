@@ -42,26 +42,6 @@
     </div>
   </div>
 
-  <div class="card p2 catalog">
-    <h2 style="margin-top:0">{{ t("org.mcp") }}</h2>
-    <p class="hint">{{ t("org.mcp.hint") }}</p>
-    {% if servers %}
-    <div class="table-wrap"><table>
-      <tr><th>{{ t("org.markets.col.name") }}</th><th>{{ t("org.mcp.col.url") }}</th><th></th></tr>
-      {% for s in servers %}
-      <tr><td><strong>{{ s.name }}</strong>{% if s.description %} <span class="muted">{{ s.description }}</span>{% endif %}</td><td class="tech">{{ s.url }}</td>
-        <td class="right"><button class="danger" form="mcp-ops" formaction="/org/mcp-servers/{{ s.name }}/delete" onclick="return confirm({{ t('org.mcp.delete.confirm') | tojson }})">{{ t("org.markets.delete") }}</button></td></tr>
-      {% endfor %}
-    </table></div>
-    {% else %}<p class="muted">{{ t("org.mcp.none") }}</p>{% endif %}
-    <div class="addrow">
-      <label>{{ t("org.markets.col.name") }} <span class="ex">{{ t("ex.mcp.name") }}</span><input type="text" name="name" form="mcp-add" required></label>
-      <label>{{ t("org.mcp.col.url") }} <span class="ex">{{ t("ex.mcp.url") }}</span><input type="text" name="url" form="mcp-add" required></label>
-      <label>{{ t("org.mcp.desc") }}<input type="text" name="description" form="mcp-add"></label>
-      <button class="secondary" form="mcp-add">{{ t("org.mcp.add") }}</button>
-    </div>
-  </div>
-
   {# the safety net is optional and usually empty: folded, one summary line, opened only to show a validation error #}
   <details class="card fold"{% if errors %} open{% endif %}>
     <summary><strong>{{ t("org.default_policy") }}</strong> <span class="muted">— {{ t("org.default_policy.optional") }} · {{ default_summary }}{% if receiving is not none %} · {{ t("org.receiving.count").format(n=receiving | length) }}{% endif %}</span></summary>
@@ -77,6 +57,4 @@
 </form>
 <form method="post" action="/org/marketplaces" id="market-add"></form>
 <form method="post" id="market-ops"></form>
-<form method="post" action="/org/mcp-servers" id="mcp-add"></form>
-<form method="post" id="mcp-ops"></form>
 {% endblock %}

@@ -92,16 +92,14 @@ MARKET = {
     ],
     "fetched_at": "2026-11-07T00:00:00Z",
 }
-MCP_SERVER = {"name": "deepwiki", "url": "https://mcp.deepwiki.com/mcp", "description": "Public docs search"}
 
 
 def seed_catalogs(store: Store) -> None:
-    """팀이 고르는 조직 카탈로그(회사 저장소 1 · MCP 서버 1)를 심는다.
+    """팀이 고르는 조직 카탈로그(회사 저장소 1)를 심는다.
 
-    Seed the org catalogs teams pick from (one company marketplace, one MCP server).
+    Seed the org catalog teams pick from (one company marketplace).
     """
     store.put_marketplace(dict(MARKET))
-    store.put_mcp_server(dict(MCP_SERVER))
 
 
 @pytest.fixture

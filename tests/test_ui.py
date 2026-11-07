@@ -13,7 +13,6 @@ FORM = {
     "models": ["claude-sonnet-5-5", "claude-haiku-5-5"],
     "marketplace": "example-extensions",
     "plugins": "deck-design\ninfographic-design\n",
-    "mcp_servers": "deepwiki https://mcp.deepwiki.com/mcp\n",
     "agents": ["dev-guide-qa", "api-catalog"],
     "lock_plugin_sources": "company_only",
     "lock_personal_customization": "block",
@@ -100,7 +99,7 @@ def test_save_draft_then_submit_then_approve_publishes_and_pushes_models(client,
     assert client.post(f"/teams/{TEAM}/save", data=FORM).status_code == 302
     draft = store.get_policy(TEAM, "DRAFT")
     assert draft["status"] == "draft" and draft["doc"]["plugins"] == ["deck-design", "infographic-design"]
-    assert draft["doc"]["mcp_servers"] == {"deepwiki": {"url": "https://mcp.deepwiki.com/mcp"}}
+    assert draft["doc"]["mcp_servers"] == {}  # PCs connect to the tool gateway only
 
     assert client.post(f"/teams/{TEAM}/submit").status_code == 302
     assert store.get_policy(TEAM, "DRAFT")["status"] == "pending"
@@ -161,7 +160,7 @@ def test_validation_errors_are_shown_and_nothing_is_saved(client, settings, stor
     managed(store)
     login_as(client, settings)
 
-    resp = client.post(f"/teams/{TEAM}/save", data={**FORM, "mcp_servers": "bad http://plain"})
+    resp = client.post(f"/teams/{TEAM}/save", data={**FORM, "plugins": ["deck-design", "not-there"]})
 
     assert resp.status_code == 400 and "https" in resp.text
     assert store.get_policy(TEAM, "DRAFT") is None
