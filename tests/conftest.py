@@ -63,6 +63,9 @@ def settings(tmp_path) -> Settings:
         oidc_token_url="https://idp.example.com/oauth2/token",
         oidc_redirect_uri="https://hub.example.com/auth/callback",
         admin_group="ClaudeAdmin",
+        company_marketplace_repo="example/claude-extensions",
+        company_marketplace_name="example-extensions",
+        company_marketplace_ref="demo-2026-11",
         _env_file=None,
     )
 

@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     mcp_oauth_metadata_url: str = ""  # Cognito .../.well-known/openid-configuration
     mcp_oauth_scopes: str = "openid email"
 
+    # --- company plugin marketplace: one GitHub repository; administrators approve plugins, teams pick them ---
+    company_marketplace_repo: str = ""  # owner/repo on GitHub; empty = the plugins page says "not configured"
+    company_marketplace_name: str = ""  # marketplace name Claude Code shows; empty = the manifest's own name
+    company_marketplace_ref: str = ""  # tag/branch offered by default on the plugins page
+
     def oauth(self) -> dict | None:
         """Claude Code 가 tool-gateway 에 로그인할 때 쓸 oauth 블록. 클라이언트 ID 가 없으면 None.
 

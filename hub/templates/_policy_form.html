@@ -28,7 +28,14 @@
   <legend>{{ t("team.marketplace") }}</legend>
   {{ more(t("help.marketplace.short"), t("help.marketplace")) }}
   {% set chosen = doc.marketplace.name if doc.marketplace else "" %}
+  {% set single = markets | length == 1 and (not chosen or chosen == markets[0].name) %}
+  {% if single %}
+  {% set chosen = markets[0].name %}
+  <input type="hidden" name="marketplace" value="{{ chosen }}">
+  <p>{{ t("team.marketplace.fixed").format(name=markets[0].name, repo=markets[0].repo, ref=markets[0].ref or "HEAD") }}</p>
+  {% endif %}
   {% if markets or chosen %}
+  {% if not single %}
   <label>{{ t("team.marketplace.pick") }}
     <select name="marketplace" id="marketplace-pick" style="max-width:420px">
       <option value="">{{ t("team.marketplace.none_option") }}</option>
@@ -36,6 +43,7 @@
       {% if chosen and chosen not in (markets | map(attribute="name") | list) %}<option value="{{ chosen }}" selected>{{ chosen }} {{ t("team.catalog.missing") }}</option>{% endif %}
     </select>
   </label>
+  {% endif %}
   <div class="hint">{{ t("team.plugins.pick") }}</div>
   {% for m in markets %}
   {% set approved = m.plugins | selectattr("status", "equalto", "APPROVED") | list %}

@@ -151,7 +151,8 @@ def test_editor_fields_are_pick_lists_from_the_org_catalogs(client, settings, st
 
     page = client.get(f"/teams/{TEAM}").text
 
-    assert 'name="marketplace"' in page and "example-extensions — example/claude-extensions @ demo-2026-11" in page
+    assert 'type="hidden" name="marketplace" value="example-extensions"' in page  # one company repository: no dropdown
+    assert "저장소: example-extensions — example/claude-extensions @ demo-2026-11 (회사 저장소)" in page
     assert 'name="plugins" value="deck-design"' in page and 'name="mcp_servers"' not in page
     assert 'placeholder="owner/repo"' not in page and "marketplace_repo" not in page
     assert page.count('<details class="more">') == 5 and "자세히" in page

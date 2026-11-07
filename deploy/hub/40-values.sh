@@ -8,7 +8,7 @@
 # The result is rendered with `helm template` as proof, and nothing is installed here.
 # Env file (~/hub-snapshots/hub-deploy.env): HUB_HOST, HUB_ROLE_ARN, AGENTCORE_REGISTRY_ID,
 #   AGENTCORE_GATEWAY_ID, AGENTCORE_GATEWAY_URL, MCP_OAUTH_CLIENT_ID; optional NAMESPACE, GATEWAY_TF_DIR,
-#   CHART_DIR, ADMIN_UI_INGRESS, HUB_IMAGE_TAG.
+#   CHART_DIR, ADMIN_UI_INGRESS, HUB_IMAGE_TAG, COMPANY_MARKETPLACE_REPO/NAME/REF (company plugin repository).
 set -euo pipefail
 SNAP="$HOME/hub-snapshots"; mkdir -p "$SNAP"; umask 077
 ENV_FILE="${1:-$SNAP/hub-deploy.env}"
@@ -81,6 +81,9 @@ env:
   MCP_OAUTH_CALLBACK_PORT: "8094"
   MCP_OAUTH_METADATA_URL: "https://cognito-idp.$REGION.amazonaws.com/$POOL/.well-known/openid-configuration"
   MCP_OAUTH_SCOPES: "openid email"
+  COMPANY_MARKETPLACE_REPO: "${COMPANY_MARKETPLACE_REPO:-}"
+  COMPANY_MARKETPLACE_NAME: "${COMPANY_MARKETPLACE_NAME:-}"
+  COMPANY_MARKETPLACE_REF: "${COMPANY_MARKETPLACE_REF:-}"
 secrets:
   HUB_TOKEN: "$HUB_TOKEN"
   ADMIN_API_TOKEN: "$ADMIN_API_TOKEN"

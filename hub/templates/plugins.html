@@ -13,45 +13,39 @@
   </ol>
 </div>
 
-<div class="card p2 catalog">
-  <h2 style="margin-top:0">{{ t("org.markets") }}</h2>
-  <p class="hint">{{ t("org.markets.hint") }}</p>
-  {% if markets %}
-  <div class="table-wrap"><table>
-    <tr><th>{{ t("org.markets.col.name") }}</th><th>{{ t("org.markets.col.repo") }}</th><th>{{ t("org.markets.col.plugins") }}</th><th>{{ t("org.markets.col.fetched") }}</th><th></th></tr>
-    {% for m in markets %}
-    <tr><td><strong>{{ m.name }}</strong></td><td class="tech">{{ m.repo }}{% if m.ref %} @ {{ m.ref }}{% endif %}</td>
-      <td>{{ t("plugins.count").format(total=m.plugins | length, approved=m.plugins | selectattr("status", "equalto", "APPROVED") | list | length) }}</td>
-      <td class="muted">{{ ts(m.fetched_at) }}</td>
-      <td class="right"><form method="post" action="/plugins/marketplaces/{{ m.name }}/refresh" style="display:inline"><button class="secondary">{{ t("org.markets.refresh") }}</button></form>
-        <form method="post" action="/plugins/marketplaces/{{ m.name }}/delete" style="display:inline" onsubmit="return confirm({{ t('org.markets.delete.confirm') | tojson }})"><button class="danger">{{ t("org.markets.delete") }}</button></form></td></tr>
-    {% endfor %}
-  </table></div>
-  {% else %}<p class="muted">{{ t("org.markets.none") }}</p>{% endif %}
-  <form method="post" action="/plugins/marketplaces" class="addrow">
-    <label>{{ t("team.marketplace.repo") }} <span class="ex">{{ t("ex.marketplace.repo") }}</span><input type="text" name="repo" required></label>
-    <label>{{ t("team.marketplace.ref") }} <span class="ex">{{ t("ex.marketplace.ref") }}</span><input type="text" name="ref"></label>
-    <label>{{ t("org.markets.name.optional") }} <span class="ex">{{ t("ex.marketplace.name") }}</span><input type="text" name="name"></label>
-    <button class="secondary" data-busy="{{ t('busy') }}">{{ t("org.markets.add") }}</button>
+<div class="card p2">
+  <h2 style="margin-top:0">{{ t("plugins.company") }}</h2>
+  <p class="hint">{{ t("plugins.company.hint") }}</p>
+  {% if not company.repo %}
+  <p class="muted">{{ t("plugins.not_configured") }}</p>
+  {% else %}
+  <p><strong>{{ company.repo }}</strong>{% if company.name %} <span class="muted">({{ company.name }})</span>{% endif %}
+    {% if market %} · <span class="muted">{{ t("org.markets.col.fetched") }} {{ ts(market.fetched_at) }} · {{ t("plugins.count").format(total=market.plugins | length, approved=market.plugins | selectattr("status", "equalto", "APPROVED") | list | length) }}</span>{% endif %}</p>
+  <form method="post" action="/plugins/read" class="addrow">
+    <label>{{ t("plugins.ref.label") }}<input type="text" name="ref" value="{{ company.ref }}"></label>
+    <button class="{{ 'primary' if not market else 'secondary' }}" data-busy="{{ t('busy') }}">{{ t("plugins.reread") if market else t("plugins.read") }}</button>
   </form>
+  <p class="hint">{{ t("plugins.ref.hint") }}</p>
+  {% if not market %}<p class="muted">{{ t("plugins.unread") }}</p>{% endif %}
+  {% endif %}
 </div>
 
-{% for m in markets %}
+{% if market %}
 <div class="card p2">
-  <h2 style="margin-top:0">{{ t("plugins.review") }}: {{ m.name }} <span class="tech">{{ m.repo }}{% if m.ref %} @ {{ m.ref }}{% endif %}</span></h2>
+  <h2 style="margin-top:0">{{ t("plugins.review") }} <span class="tech">{{ market.repo }}{% if market.ref %} @ {{ market.ref }}{% endif %}</span></h2>
   <p class="hint">{{ t("plugins.review.hint") }}</p>
-  {% if m.plugins %}
+  {% if market.plugins %}
   <div class="table-wrap"><table>
     <tr><th>{{ t("plugins.col.plugin") }}</th><th>{{ t("agents.col.status") }}</th><th>{{ t("agents.col.selectable") }}</th><th></th></tr>
-    {% for p in m.plugins %}
+    {% for p in market.plugins %}
     <tr><td><strong>{{ p.name }}</strong>{% if p.description %}<br><span class="muted">{{ p.description }}</span>{% endif %}</td>
       <td><span class="pill {{ 'published' if p.status == 'APPROVED' else ('rejected' if p.status == 'REJECTED' else 'pending') }}">{{ t("plugins.status." + p.status) }}</span>{% if p.decided_at %} <span class="muted">{{ ts(p.decided_at) }}</span>{% endif %}</td>
       <td>{{ t("yes") if p.status == "APPROVED" else t("no") }}</td>
-      <td class="right">{% if p.status != "APPROVED" %}<form method="post" action="/plugins/marketplaces/{{ m.name }}/plugins/{{ p.name }}/approve" style="display:inline"><button class="primary">{{ t("agents.approve") }}</button></form>{% endif %}
-        {% if p.status != "REJECTED" %}<form method="post" action="/plugins/marketplaces/{{ m.name }}/plugins/{{ p.name }}/reject" style="display:inline"><button class="danger">{{ t("agents.reject") }}</button></form>{% endif %}</td></tr>
+      <td class="right">{% if p.status != "APPROVED" %}<form method="post" action="/plugins/marketplaces/{{ market.name }}/plugins/{{ p.name }}/approve" style="display:inline"><button class="primary">{{ t("agents.approve") }}</button></form>{% endif %}
+        {% if p.status != "REJECTED" %}<form method="post" action="/plugins/marketplaces/{{ market.name }}/plugins/{{ p.name }}/reject" style="display:inline"><button class="danger">{{ t("agents.reject") }}</button></form>{% endif %}</td></tr>
     {% endfor %}
   </table></div>
   {% else %}<p class="muted">{{ t("changes.empty") }}</p>{% endif %}
 </div>
-{% endfor %}
+{% endif %}
 {% endblock %}

@@ -34,7 +34,6 @@ from hub.auth import current_session, require_admin, require_session, require_te
 from hub.diff import policy_diff
 from hub.fragment import (
     _NAME,
-    _REPO,
     LOCK_CHOICES,
     STRICT_DEFAULTS,
     build_fragment,
@@ -369,72 +368,38 @@ def plugins_page(request: Request) -> Response:
     return _render_plugins(request, session, errors=None)
 
 
-@router.post("/plugins/marketplaces")
-async def marketplace_add(request: Request) -> Response:
-    """회사 플러그인 저장소 등록: GitHub 에서 manifest 를 읽어 카탈로그에 넣는다(이름을 비우면 manifest 의 이름).
-    읽힌 플러그인은 모두 '승인 대기' 로 들어온다.
+@router.post("/plugins/read")
+async def plugins_read(request: Request) -> Response:
+    """회사 저장소를 주어진 태그로 읽어 플러그인 목록을 갱신한다. 새 플러그인은 승인 대기, 이미 심사한 것은 유지.
 
-    Register a company marketplace: read the manifest from GitHub into the catalog (name from the manifest
-    when blank). Every plugin read starts as PENDING.
+    Read the company repository at the given tag and refresh the plugin list. New plugins start PENDING;
+    reviewed ones keep their decision.
     """
     session = require_admin(request)
+    settings = request.app.state.settings
     store = request.app.state.store
     form = await request.form()
-    repo, ref = (form.get("repo") or "").strip(), (form.get("ref") or "").strip()
-    name = (form.get("name") or "").strip()
-    errors = [] if _REPO.match(repo) else ["repo must look like owner/repo"]
-    manifest = None
-    if not errors:
-        try:
-            manifest = fetch_manifest(request.app.state.http, repo, ref)
-        except MarketplaceError as exc:
-            errors.append(f"marketplace: {exc}")
-    if manifest is not None:
-        name = name or manifest["name"]
-        if not (name and _NAME.match(name)):
-            errors.append("marketplace name must be lowercase letters, digits, - or _")
-    if errors:
+    ref = (form.get("ref") or "").strip()
+    repo = settings.company_marketplace_repo
+    if not repo:
+        return _render_plugins(request, session, errors=[_t(request)("plugins.not_configured")], status_code=400)
+    try:
+        manifest = fetch_manifest(request.app.state.http, repo, ref)
+    except MarketplaceError as exc:
+        return _render_plugins(request, session, errors=[f"marketplace: {exc}"], status_code=400)
+    name = settings.company_marketplace_name or manifest["name"]
+    if not (name and _NAME.match(name)):
+        errors = ["marketplace name must be lowercase letters, digits, - or _"]
         return _render_plugins(request, session, errors=errors, status_code=400)
-    assert manifest is not None
-    existing = next((m for m in store.list_marketplaces() if m["name"] == name), None)
+    existing = _company_market(request)
+    if existing and existing["name"] != name:  # the name changed (settings or manifest): replace the old entry
+        store.delete_marketplace(existing["name"])
     plugins = _merge_plugin_status(manifest["plugins"], existing["plugins"] if existing else [])
     market = {"name": name, "repo": repo, "ref": ref, "path": "", "plugins": plugins, "fetched_at": _now()}
     store.put_marketplace(market)
-    store.audit("market_added", actor=session["email"], detail={"name": name, "repo": repo, "ref": ref})
-    return RedirectResponse("/plugins?msg=msg.market_added", status_code=302)
-
-
-@router.post("/plugins/marketplaces/{name}/refresh")
-def marketplace_refresh(request: Request, name: str) -> Response:
-    """저장소를 같은 repo·ref 로 다시 읽어 플러그인 목록을 바꾼다. 이미 심사한 플러그인의 상태는 유지, 새 것은 승인 대기.
-
-    Re-read the marketplace at the stored repo/ref. Reviewed plugins keep their status; new ones start PENDING.
-    """
-    session = require_admin(request)
-    store = request.app.state.store
-    market = next((m for m in store.list_marketplaces() if m["name"] == name), None)
-    if market is None:
-        raise HTTPException(status_code=404, detail="marketplace is not registered")
-    try:
-        manifest = fetch_manifest(request.app.state.http, market["repo"], market.get("ref", ""), market.get("path", ""))
-    except MarketplaceError as exc:
-        return _render_plugins(request, session, errors=[f"marketplace: {exc}"], status_code=400)
-    plugins = _merge_plugin_status(manifest["plugins"], market.get("plugins") or [])
-    store.put_marketplace({**market, "plugins": plugins, "fetched_at": _now()})
-    store.audit("market_refreshed", actor=session["email"], detail={"name": name, "count": len(plugins)})
-    return RedirectResponse("/plugins?msg=msg.market_refreshed", status_code=302)
-
-
-@router.post("/plugins/marketplaces/{name}/delete")
-def marketplace_delete(request: Request, name: str) -> Response:
-    """저장소를 카탈로그에서 뺀다(발행된 정책은 값을 품고 있어 그대로).
-
-    Remove a marketplace from the catalog (published policies keep their own copy).
-    """
-    session = require_admin(request)
-    request.app.state.store.delete_marketplace(name)
-    request.app.state.store.audit("market_deleted", actor=session["email"], detail={"name": name})
-    return RedirectResponse("/plugins?msg=msg.market_deleted", status_code=302)
+    detail = {"name": name, "repo": repo, "ref": ref, "count": len(plugins)}
+    store.audit("market_read", actor=session["email"], detail=detail)
+    return RedirectResponse("/plugins?msg=msg.market_read", status_code=302)
 
 
 @router.post("/plugins/marketplaces/{name}/plugins/{plugin}/{decision}")
@@ -483,18 +448,36 @@ def _merge_plugin_status(fresh: list[dict], previous: list[dict]) -> list[dict]:
 
 
 def _render_plugins(request: Request, session: dict, *, errors: list[str] | None, status_code: int = 200) -> Response:
-    """플러그인 저장소 화면 렌더.
+    """플러그인 저장소 화면 렌더 — 설정의 회사 저장소 + 읽어 둔 플러그인 목록.
 
-    Render the plugin repositories page.
+    Render the plugin repository page: the configured company repository plus the plugins read so far.
     """
+    settings = request.app.state.settings
+    market = _company_market(request)
     return _render(
         request,
         "plugins.html",
         session=session,
-        markets=request.app.state.store.list_marketplaces(),
+        company={
+            "repo": settings.company_marketplace_repo,
+            "name": settings.company_marketplace_name or (market or {}).get("name", ""),
+            "ref": (market or {}).get("ref") or settings.company_marketplace_ref,
+        },
+        market=market,
         errors=errors or [],
         status_code=status_code,
     )
+
+
+def _company_market(request: Request) -> dict | None:
+    """저장된 카탈로그 가운데 설정의 회사 저장소(repo 일치) 항목.
+
+    The stored catalog entry for the configured company repository (matched by repo).
+    """
+    repo = request.app.state.settings.company_marketplace_repo
+    if not repo:
+        return None
+    return next((m for m in request.app.state.store.list_marketplaces() if m["repo"] == repo), None)
 
 
 @router.get("/mcp-servers")

@@ -6,7 +6,7 @@ replicaCount: 1
 
 image:
   repository: CHANGE_ME            # e.g. 123456789012.dkr.ecr.us-west-2.amazonaws.com/llm-gateway/governance-hub
-  tag: "0.1.17"
+  tag: "0.1.18"
   pullPolicy: IfNotPresent
 
 serviceAccount:
@@ -43,6 +43,10 @@ env:
   MCP_OAUTH_CALLBACK_PORT: "8094"
   MCP_OAUTH_METADATA_URL: "https://cognito-idp.us-west-2.amazonaws.com/CHANGE_ME_POOL_ID/.well-known/openid-configuration"
   MCP_OAUTH_SCOPES: "openid email"
+  # Company plugin marketplace (one GitHub repository; public). Administrators pin a tag and approve plugins.
+  COMPANY_MARKETPLACE_REPO: ""     # e.g. example-org/claude-extensions
+  COMPANY_MARKETPLACE_NAME: ""     # e.g. example-extensions (empty = the manifest's name)
+  COMPANY_MARKETPLACE_REF: ""      # e.g. v1.0 (default tag offered on the plugins page)
 
 # Secret environment (one Kubernetes Secret, plain values in the deploy host's copy of this file).
 secrets:
