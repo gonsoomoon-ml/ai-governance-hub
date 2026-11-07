@@ -183,9 +183,9 @@ def login_as(client: TestClient, settings, email=ADMIN_EMAIL, role="admin", team
 
 
 class FakeAdminApi:
-    """admin-api 의 네 끝점을 흉내 내는 httpx 핸들러.
+    """admin-api 의 다섯 끝점을 흉내 내는 httpx 핸들러(팀 허용 모델은 GET/PUT 이 같은 값을 공유).
 
-    An httpx handler imitating the four admin-api endpoints the hub uses.
+    An httpx handler imitating the five admin-api endpoints the hub uses (team allowed models are shared by GET and PUT).
     """
 
     def __init__(self):
@@ -195,6 +195,8 @@ class FakeAdminApi:
         """
         self.calls: list[tuple[str, str, dict | None]] = []
         self.fail = False  # when True every call answers 503
+        self.allowed: dict[str, list[str]] = {}  # team_id -> allowed models the "gateway" holds ([] = none)
+        self.request_ids: list[str] = []  # x-request-id per call, "" when absent (parallel to calls)
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         """경로별 가짜 응답. 토큰이 틀리면 401.
@@ -205,6 +207,7 @@ class FakeAdminApi:
         is_json = request.headers.get("content-type", "").startswith("application/json")
         body = json.loads(request.content) if request.content and is_json else None
         self.calls.append((request.method, path, body))
+        self.request_ids.append(request.headers.get("x-request-id", ""))
         if request.headers.get("authorization") != "Bearer svc-test":
             return httpx.Response(401, json={"detail": "unauthorized"})
         if self.fail:
@@ -217,8 +220,11 @@ class FakeAdminApi:
             q = request.url.params.get("q", "")
             items = [u for u in USERS if q and q in u["email"]]
             return httpx.Response(200, json={"items": items, "truncated": False})
-        if path.startswith("/admin/teams/") and path.endswith("/allowed-models") and request.method == "PUT":
-            return httpx.Response(200, json={"team_id": path.split("/")[3], "model_aliases": body["model_aliases"]})
+        if path.startswith("/admin/teams/") and path.endswith("/allowed-models"):
+            team_id = path.split("/")[3]
+            if request.method == "PUT":
+                self.allowed[team_id] = list(body["model_aliases"])
+            return httpx.Response(200, json={"team_id": team_id, "model_aliases": self.allowed.get(team_id, [])})
         return httpx.Response(404, json={"detail": f"no fake for {path}"})
 
 

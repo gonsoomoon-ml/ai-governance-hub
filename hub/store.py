@@ -33,6 +33,10 @@ from hub.fragment import empty_policy
 DEFAULT_LOCKS_FIXED = {"plugin_sources": None, "personal_customization": None, "mcp": None}
 
 
+#: put_draft 의 "스냅샷은 그대로" 표시값 / sentinel for put_draft: keep the stored snapshot
+KEEP: object = object()
+
+
 class Store:
     """표 하나를 감싼 저장소. 메서드는 동기(boto3)이며 FastAPI 가 스레드 풀에서 돌린다.
 
@@ -149,10 +153,17 @@ class Store:
         submitted_by: str = "",
         rejected_reason: str = "",
         edited_by: str = "",
+        gateway_models: list[str] | None | object = KEEP,
     ) -> None:
         """초안 저장(상태 포함). 제출이면 submitted_by·submitted_at 이 채워진다.
 
+        gateway_models = 저장할 때 본 AI 게이트웨이의 팀 허용 모델(한 손 규칙의 스냅샷; [] = 제한 없음).
+        생략(KEEP)하면 이미 있던 스냅샷을 그대로 두고, None 이면 지운다(읽지 못함).
+
         Save the draft with its status; a submission fills submitted_by and submitted_at.
+
+        gateway_models = the AI gateway's team allowed models as seen at save time (the one-writer
+        snapshot; [] = no restriction). Omitted (KEEP) keeps the existing snapshot; None drops it (unread).
         """
         item = {
             "pk": f"TEAM#{team_id}",
@@ -163,6 +174,11 @@ class Store:
             "updated_at": _now(),
             "rejected_reason": rejected_reason,
         }
+        if gateway_models is KEEP:
+            previous = self._get(f"TEAM#{team_id}", "POLICY#DRAFT") or {}
+            gateway_models = previous.get("gateway_models")
+        if isinstance(gateway_models, list):
+            item["gateway_models"] = [str(a) for a in gateway_models]
         if status == "pending":
             item["submitted_by"] = submitted_by
             item["submitted_at"] = _now()
@@ -180,6 +196,8 @@ class Store:
         record = {"doc": doc, "version": version, "version_hash": version_hash, "published_by": by, "published_at": now}
         self._put({"pk": f"TEAM#{team_id}", "sk": f"VERSION#{version:06d}", **record})
         self._put({"pk": f"TEAM#{team_id}", "sk": "POLICY#PUBLISHED", **record})
+        # The DRAFT is rewritten without gateway_models on purpose: after a publish the published
+        # copy itself is the value the hub last wrote, which is what the one-writer check compares.
         self._put(
             {
                 "pk": f"TEAM#{team_id}",

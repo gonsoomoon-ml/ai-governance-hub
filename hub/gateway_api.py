@@ -2,12 +2,13 @@
 
   GET /admin/users/tree                    팀 목록(부서 이름·리더)
   GET /admin/models                        모델 목록(ACTIVE 만 씀)
+  GET /admin/teams/{id}/allowed-models     팀 허용 모델의 현재 값(편집 시작·발행 직전에 읽음 — 한 손 규칙)
   PUT /admin/teams/{id}/allowed-models     발행 때 허용 모델 반영 — [] = 행 전부 삭제 = 제한 없음
   GET /admin/users/search?q=<email>        로그인 이메일 -> 사용자 id (팀 리더 판정)
 
 클러스터 안 DNS 로 부르므로 VPN 이 필요 없다. 실패는 전부 GatewayApiError 하나로 올린다.
 
-LLM gateway admin-api client (service token). Only the four endpoints the hub uses (see above).
+LLM gateway admin-api client (service token). Only the five endpoints the hub uses (see above).
 Called over in-cluster DNS, so no VPN. Every failure is raised as one GatewayApiError.
 """
 
@@ -62,12 +63,28 @@ class GatewayApi:
             if m.get("status") == "ACTIVE"
         ]
 
-    def set_allowed_models(self, team_id: str, aliases: list[str] | None) -> None:
+    def get_allowed_models(self, team_id: str) -> list[str]:
+        """팀 허용 모델의 현재 값. [] 는 제한 없음(행 없음).
+
+        The team's current allowed models. [] means no restriction (no rows).
+        """
+        body = self._request("GET", f"/admin/teams/{team_id}/allowed-models")
+        aliases = body.get("model_aliases")
+        return [str(a) for a in aliases] if isinstance(aliases, list) else []
+
+    def set_allowed_models(self, team_id: str, aliases: list[str] | None, *, request_id: str = "") -> None:
         """팀 허용 모델을 바꾼다. None(제한 없음) 은 [] 로 보낸다(admin-api 의 [] = 전체 허용).
+        request_id 는 x-request-id 헤더로 — admin-api 의 감사 기록과 허브의 발행 기록을 잇는 값.
 
         Set the team's allowed models. None (no restriction) is sent as [] (admin-api's [] = all).
+        request_id goes out as x-request-id — the value that ties admin-api's audit log to the hub's publish entry.
         """
-        self._request("PUT", f"/admin/teams/{team_id}/allowed-models", json={"model_aliases": list(aliases or [])})
+        self._request(
+            "PUT",
+            f"/admin/teams/{team_id}/allowed-models",
+            json={"model_aliases": list(aliases or [])},
+            request_id=request_id,
+        )
 
     def find_user_id(self, email: str) -> str | None:
         """이메일이 정확히 같은 사용자의 id. 없으면 None.
@@ -82,17 +99,19 @@ class GatewayApi:
                 return item["id"]
         return None
 
-    def _request(self, method: str, path: str, **kwargs: Any) -> dict:
-        """요청 한 번. 설정 없음·전송 오류·비2xx 는 GatewayApiError.
+    def _request(self, method: str, path: str, *, request_id: str = "", **kwargs: Any) -> dict:
+        """요청 한 번. 설정 없음·전송 오류·비2xx 는 GatewayApiError. request_id 가 있으면 x-request-id 헤더.
 
         One request. Not configured, transport error and non-2xx become GatewayApiError.
+        request_id, when given, is sent as the x-request-id header.
         """
         if not self.base_url:
             raise GatewayApiError("admin-api is not configured (ADMIN_API_URL)")
+        headers = {"Authorization": f"Bearer {self.token}"}
+        if request_id:
+            headers["x-request-id"] = request_id
         try:
-            resp = self.http.request(
-                method, self.base_url + path, headers={"Authorization": f"Bearer {self.token}"}, **kwargs
-            )
+            resp = self.http.request(method, self.base_url + path, headers=headers, **kwargs)
         except httpx.HTTPError as exc:
             raise GatewayApiError(f"admin-api unreachable: {type(exc).__name__}: {exc}") from exc
         if resp.status_code >= 300:

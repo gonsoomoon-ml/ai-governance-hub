@@ -119,7 +119,7 @@ def test_save_draft_then_submit_then_approve_publishes_and_pushes_models(client,
         ("PUT", f"/admin/teams/{TEAM}/allowed-models", {"model_aliases": ["claude-sonnet-5-5", "claude-haiku-5-5"]})
     ]
     actions = [e["action"] for e in store.list_audit()]
-    assert actions[:3] == ["publish", "approve", "submit"]
+    assert actions[:3] == ["approve", "publish", "submit"]  # approve is recorded after the publish succeeded (0.1.9)
 
 
 def test_reject_sends_the_draft_back_with_a_reason(client, settings, store):

@@ -3,17 +3,27 @@
 발행 순서가 중요하다: admin-api 에 허용 모델을 먼저 쓰고(실패하면 발행하지 않음), 그 다음 발행본을
 저장한다. 반대로 하면 PC 의 /model 목록과 서버 강제가 어긋나는 창이 생긴다.
 
+한 손 규칙(0.1.9): 팀 허용 모델은 AI 게이트웨이에도 있는 값이라, 허브는 편집을 시작할 때 현재 값을
+읽어 초기값으로 쓰고(초안·발행본이 없을 때), 저장할 때 본 값을 초안에 스냅샷으로 남기며, 발행 직전에
+다시 읽어 허브가 마지막으로 본 값(발행본 또는 스냅샷)과 다르면 발행을 멈춘다(409, 두 값을 보여 줌).
+
 Web screens (Jinja2, server-rendered, no build). Teams -> policy editor -> submit -> approve/publish ->
 organization settings -> audit.
 
 Publish order matters: write allowed models to admin-api first (no publish on failure), then store the
 published copy. The other order opens a window where the PC's /model list and server enforcement disagree.
+
+One-writer rule (0.1.9): team allowed models also live in the AI gateway, so the hub reads the current
+value when editing starts (initial value when there is no draft or published copy), snapshots the value
+seen at save time into the draft, and re-reads right before publishing; if it differs from the value the
+hub last saw (published copy or snapshot) the publish stops (409, both values shown).
 """
 
 from __future__ import annotations
 
 import json
 import re
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, Form, HTTPException, Request
@@ -29,6 +39,22 @@ from hub.summary import enforcement_rows, step_of
 from hub.timefmt import fmt_ts
 
 router = APIRouter()
+
+
+class PublishStopped(Exception):
+    """한 손 규칙: 게이트웨이의 현재 값이 허브가 마지막으로 본 값과 달라 발행을 멈춤.
+
+    One-writer rule: the gateway's current value differs from what the hub last saw; publish stopped.
+    """
+
+    def __init__(self, current: list[str], hub: list[str] | None):
+        """지금 게이트웨이 값과 발행하려던 허브 값.
+
+        The gateway's value right now and the hub value that was about to be published.
+        """
+        super().__init__("publish stopped: gateway value differs")
+        self.current = current
+        self.hub = hub
 
 
 # --- pages ---
@@ -153,14 +179,18 @@ async def save_draft(request: Request, team_id: str) -> Response:
     errors = validate_policy(doc, store.org_settings())
     if errors:
         return _render_editor(request, session, team_id, errors=errors, doc=doc, status_code=400)
-    store.put_draft(team_id, doc, status="draft", edited_by=session["email"])
+    seen = _gateway_models(request, team_id)  # one-writer snapshot: the gateway value this save was made against
+    store.put_draft(team_id, doc, status="draft", edited_by=session["email"], gateway_models=seen)
     store.audit("save", actor=session["email"], team_id=team_id)
     if action == "submit":
         store.put_draft(team_id, doc, status="pending", submitted_by=session["email"], edited_by=session["email"])
         store.audit("submit", actor=session["email"], team_id=team_id)
         return RedirectResponse(f"/teams/{team_id}?msg=msg.submitted", status_code=302)
     if action == "publish":
-        _publish(request, session, team_id, doc)
+        try:
+            _publish(request, session, team_id, doc, seen=seen)
+        except PublishStopped as stop:
+            return _stopped(request, session, team_id, doc, stop)
         return RedirectResponse(f"/teams/{team_id}?msg=msg.published", status_code=302)
     return RedirectResponse(f"/teams/{team_id}?msg=msg.saved", status_code=302)
 
@@ -192,10 +222,17 @@ def approve_draft(request: Request, team_id: str) -> Response:
     draft = store.get_policy(team_id, "DRAFT")
     if not draft or draft.get("status") != "pending":
         raise HTTPException(status_code=400, detail="nothing is pending approval for this team")
+    try:
+        version = _publish(request, session, team_id, draft["doc"], seen=draft.get("gateway_models"))
+    except PublishStopped as stop:
+        return _stopped(request, session, team_id, draft["doc"], stop)
+    # "approve" is recorded only after the publish succeeded: an approval that published nothing is not one.
     store.audit(
-        "approve", actor=session["email"], team_id=team_id, detail={"submitted_by": draft.get("submitted_by", "")}
+        "approve",
+        actor=session["email"],
+        team_id=team_id,
+        detail={"submitted_by": draft.get("submitted_by", ""), "version": version},
     )
-    _publish(request, session, team_id, draft["doc"])
     return RedirectResponse(f"/teams/{team_id}?msg=msg.published", status_code=302)
 
 
@@ -227,7 +264,10 @@ def publish_draft(request: Request, team_id: str) -> Response:
     draft = request.app.state.store.get_policy(team_id, "DRAFT")
     if not draft:
         raise HTTPException(status_code=400, detail="nothing to publish: save a draft first")
-    _publish(request, session, team_id, draft["doc"])
+    try:
+        _publish(request, session, team_id, draft["doc"], seen=draft.get("gateway_models"))
+    except PublishStopped as stop:
+        return _stopped(request, session, team_id, draft["doc"], stop)
     return RedirectResponse(f"/teams/{team_id}?msg=msg.published", status_code=302)
 
 
@@ -441,11 +481,20 @@ def policy_from_form(form: Any) -> dict:
     return doc
 
 
-def _publish(request: Request, session: dict, team_id: str, doc: dict) -> int:
-    """검증 -> admin-api 허용 모델 -> 게이트웨이 대상 보장 -> 발행본 저장 -> 감사. 실패하면 HTTPException(400/502).
+def _publish(request: Request, session: dict, team_id: str, doc: dict, *, seen: list[str] | None = None) -> int:
+    """검증 -> 한 손 확인(게이트웨이 현재 값 다시 읽기) -> admin-api 허용 모델 -> 게이트웨이 대상 보장 -> 발행본 저장 -> 감사.
+    실패하면 HTTPException(400/502), 게이트웨이 값이 다르면 PublishStopped.
 
-    Validate -> admin-api allowed models -> ensure gateway targets -> store the published copy -> audit.
-    HTTPException (400/502) on failure.
+    seen = 초안이 저장될 때 본 게이트웨이 값(스냅샷). 발행은 현재 값이 발행본의 값 또는 seen 과 같을 때만.
+    둘 다 없으면(0.1.9 이전 초안) 게이트웨이에 제한이 없을 때만 — 다른 손이 걸어 둔 제한을 조용히 풀지 않는다.
+
+    Validate -> one-writer check (re-read the gateway's current value) -> admin-api allowed models ->
+    ensure gateway targets -> store the published copy -> audit. HTTPException (400/502) on failure,
+    PublishStopped when the gateway value differs.
+
+    seen = the gateway value snapshotted when the draft was saved. Publishing proceeds only when the
+    current value equals the published copy's value or seen; with neither (a pre-0.1.9 draft) only when
+    the gateway has no restriction — a restriction set by another hand is never released silently.
     """
     store = request.app.state.store
     errors = validate_policy(doc, store.org_settings())
@@ -454,7 +503,30 @@ def _publish(request: Request, session: dict, team_id: str, doc: dict) -> int:
     if doc.get("models") == []:
         raise HTTPException(status_code=400, detail="models: pick at least one model or choose no restriction")
     try:
-        request.app.state.gateway.set_allowed_models(team_id, doc.get("models"))
+        current = request.app.state.gateway.get_allowed_models(team_id)
+    except GatewayApiError as exc:
+        raise HTTPException(
+            status_code=502, detail=f"not published: cannot read current allowed models: {exc}"
+        ) from exc
+    published = store.get_policy(team_id, "PUBLISHED")
+    expected = set()
+    if published:
+        expected.add(_norm_models((published.get("doc") or {}).get("models")))
+    if isinstance(seen, list):
+        expected.add(_norm_models(seen))
+    if not expected:
+        expected.add(())  # nothing seen yet: only an unrestricted gateway row may be written over
+    if _norm_models(current) not in expected:
+        store.audit(
+            "publish_stopped",
+            actor=session["email"],
+            team_id=team_id,
+            detail={"gateway_models": current, "hub_models": doc.get("models")},
+        )
+        raise PublishStopped(current, doc.get("models"))
+    request_id = f"hub-{uuid.uuid4().hex[:16]}"  # ties admin-api's audit row to this publish entry
+    try:
+        request.app.state.gateway.set_allowed_models(team_id, doc.get("models"), request_id=request_id)
     except GatewayApiError as exc:
         raise HTTPException(status_code=502, detail=f"not published: {exc}") from exc
     agentcore = request.app.state.agentcore
@@ -469,9 +541,51 @@ def _publish(request: Request, session: dict, team_id: str, doc: dict) -> int:
         "publish",
         actor=session["email"],
         team_id=team_id,
-        detail={"version": version, "hash": version_of(fragment), "models": doc.get("models")},
+        detail={
+            "version": version,
+            "hash": version_of(fragment),
+            "models": doc.get("models"),
+            "request_id": request_id,
+        },
     )
     return version
+
+
+def _stopped(request: Request, session: dict, team_id: str, doc: dict, stop: PublishStopped) -> Response:
+    """발행 멈춤 화면: 편집 화면을 409 로, 오류 줄에 지금 값·허브 값·할 일.
+
+    The publish-stopped screen: the editor at 409 with now/hub values and what to do in the error line.
+    """
+    t = _t(request)
+    message = t("pub.stopped").format(current=_models_label(stop.current, t), hub=_models_label(stop.hub, t))
+    return _render_editor(request, session, team_id, errors=[message], doc=doc, status_code=409)
+
+
+def _gateway_models(request: Request, team_id: str) -> list[str] | None:
+    """게이트웨이의 현재 팀 허용 모델. 읽지 못하면 None(모름).
+
+    The gateway's current team allowed models, or None when it cannot be read (unknown).
+    """
+    try:
+        return request.app.state.gateway.get_allowed_models(team_id)
+    except GatewayApiError:
+        return None
+
+
+def _norm_models(models: list[str] | None) -> tuple[str, ...]:
+    """비교용 정규화: None(제한 없음) 과 [] 는 같고, 순서·중복은 무시.
+
+    Normalized for comparison: None (no restriction) equals [], order and duplicates ignored.
+    """
+    return tuple(sorted(set(models or [])))
+
+
+def _models_label(models: list[str] | None, t) -> str:
+    """화면용 값 표시: 비어 있으면 '제한 없음', 아니면 'a · b'.
+
+    Display form: 'no restriction' when empty, else 'a · b'.
+    """
+    return " · ".join(models) if models else t("team.models.unrestricted")
 
 
 def _preview_context(request: Request, doc: dict, href: str) -> dict:
@@ -516,18 +630,24 @@ def _render_editor(
         raise HTTPException(status_code=404, detail="team is not managed by the hub")
     draft = store.get_policy(team_id, "DRAFT")
     published = store.get_policy(team_id, "PUBLISHED")
+    current = _gateway_models(request, team_id)  # one-writer rule: what the gateway holds right now
     if doc is None:
-        doc = (draft or published or {}).get("doc") or empty_policy()
+        doc = (draft or published or {}).get("doc")
+        if doc is None:  # first look at this team: start from the gateway's value, not from "no restriction"
+            doc = empty_policy()
+            doc["models"] = list(current) if current else None
     models, models_error = [], ""
     try:
         models = request.app.state.gateway.models()
     except GatewayApiError as exc:
         models_error = str(exc)
     known = {m["alias"] for m in models}
-    for alias in doc.get("models") or []:  # keep a draft's aliases visible even if admin-api is down
+    for alias in list(doc.get("models") or []) + list(current or []):  # keep aliases visible even if admin-api is down
         if alias not in known:
+            known.add(alias)
             models.append({"alias": alias, "display_name": alias})
     t = _t(request)
+    gateway_models_differs = current is not None and _norm_models(current) != _norm_models(doc.get("models"))
     org = store.org_settings()
     changes = policy_diff((published or {}).get("doc"), draft["doc"], t) if draft else []
     preview_basis = "draft" if draft else ("published" if published else "empty")
@@ -549,6 +669,8 @@ def _render_editor(
         **preview,
         models=models,
         models_error=models_error,
+        gateway_models_differs=gateway_models_differs,
+        gateway_models_label=_models_label(current, t),
         catalog=store.list_agents(),
         org=org,
         versions=store.list_versions(team_id),
