@@ -11,9 +11,7 @@ from hub.fragment import MODEL_KEYS
 
 FORM = {
     "models": ["claude-sonnet-5-5", "claude-haiku-5-5"],
-    "marketplace_name": "example-extensions",
-    "marketplace_repo": "example/claude-extensions",
-    "marketplace_ref": "demo-2026-11",
+    "marketplace": "example-extensions",
     "plugins": "deck-design\ninfographic-design\n",
     "mcp_servers": "deepwiki https://mcp.deepwiki.com/mcp\n",
     "agents": ["dev-guide-qa", "api-catalog"],

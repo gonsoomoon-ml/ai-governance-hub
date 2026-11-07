@@ -27,16 +27,59 @@
 <fieldset class="p2">
   <legend>{{ t("team.marketplace") }}</legend>
   {{ more(t("help.marketplace.short"), t("help.marketplace")) }}
-  <label>{{ t("team.marketplace.name") }} <span class="ex">{{ t("ex.marketplace.name") }}</span><input type="text" name="marketplace_name" value="{{ doc.marketplace.name if doc.marketplace else '' }}"></label>
-  <label>{{ t("team.marketplace.repo") }} <span class="ex">{{ t("ex.marketplace.repo") }}</span><input type="text" name="marketplace_repo" value="{{ doc.marketplace.repo if doc.marketplace else '' }}"></label>
-  <label>{{ t("team.marketplace.ref") }} <span class="ex">{{ t("ex.marketplace.ref") }}</span><input type="text" name="marketplace_ref" value="{{ doc.marketplace.ref if doc.marketplace and doc.marketplace.ref else '' }}"></label>
-  <label>{{ t("team.plugins") }} <span class="ex">{{ t("ex.plugins") }}</span><textarea name="plugins">{{ plugins_text }}</textarea></label>
-  <p class="hint">{{ t("help.plugins") }}</p>
+  {% set chosen = doc.marketplace.name if doc.marketplace else "" %}
+  {% if markets or chosen %}
+  <label>{{ t("team.marketplace.pick") }}
+    <select name="marketplace" id="marketplace-pick" style="max-width:420px">
+      <option value="">{{ t("team.marketplace.none_option") }}</option>
+      {% for m in markets %}<option value="{{ m.name }}" {% if m.name == chosen %}selected{% endif %}>{{ m.name }} — {{ m.repo }}{% if m.ref %} @ {{ m.ref }}{% endif %}</option>{% endfor %}
+      {% if chosen and chosen not in (markets | map(attribute="name") | list) %}<option value="{{ chosen }}" selected>{{ chosen }} {{ t("team.catalog.missing") }}</option>{% endif %}
+    </select>
+  </label>
+  <div class="hint">{{ t("team.plugins.pick") }}</div>
+  {% for m in markets %}
+  <div class="choices plugin-group" data-market="{{ m.name }}"{% if m.name != chosen %} hidden{% endif %}>
+    {% for p in m.plugins %}
+    <label><input type="checkbox" name="plugins" value="{{ p.name }}" {% if m.name == chosen and p.name in doc.plugins %}checked{% endif %}{% if m.name != chosen %} disabled{% endif %}> <strong>{{ p.name }}</strong>{% if p.description %} <span class="muted">{{ p.description }}</span>{% endif %}</label>
+    {% else %}<span class="muted">{{ t("changes.empty") }}</span>{% endfor %}
+  </div>
+  {% endfor %}
+  {% if chosen and chosen not in (markets | map(attribute="name") | list) %}
+  <div class="choices plugin-group" data-market="{{ chosen }}">{% for p in doc.plugins %}<label><input type="checkbox" name="plugins" value="{{ p }}" checked> <strong>{{ p }}</strong> <span class="muted">{{ t("team.catalog.missing") }}</span></label>{% endfor %}</div>
+  {% endif %}
+  <script>
+    (function () {
+      var pick = document.getElementById("marketplace-pick"); if (!pick) return;
+      var sync = function () {
+        document.querySelectorAll(".plugin-group").forEach(function (g) {
+          var on = g.dataset.market === pick.value;
+          g.hidden = !on;
+          g.querySelectorAll("input").forEach(function (i) { i.disabled = !on; if (!on) i.checked = false; });
+        });
+      };
+      pick.addEventListener("change", sync);
+    })();
+  </script>
+  {% else %}
+  <p class="muted">{{ t("team.catalog.empty.markets") }}{% if session and session.role == "admin" %} <a href="/org">{{ t("nav.org") }} ▸</a>{% endif %}</p>
+  {% endif %}
 </fieldset>
 <fieldset class="p2">
   <legend>{{ t("team.mcp_servers") }}</legend>
   {{ more(t("help.mcp.short"), t("help.mcp")) }}
-  <label><span class="ex">{{ t("ex.mcp") }}</span><textarea name="mcp_servers">{{ mcp_text }}</textarea></label>
+  {% set picked = (doc.mcp_servers or {}).keys() | list %}
+  {% if servers or picked %}
+  <div class="choices">
+    {% for s in servers %}
+    <label><input type="checkbox" name="mcp_servers" value="{{ s.name }}" {% if s.name in picked %}checked{% endif %}> <strong>{{ s.name }}</strong> <span class="muted">{{ s.description or s.url }}</span></label>
+    {% endfor %}
+    {% for name in picked if name not in (servers | map(attribute="name") | list) %}
+    <label><input type="checkbox" name="mcp_servers" value="{{ name }}" checked> <strong>{{ name }}</strong> <span class="muted">{{ t("team.catalog.missing") }}</span></label>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">{{ t("team.catalog.empty.mcp") }}{% if session and session.role == "admin" %} <a href="/org">{{ t("nav.org") }} ▸</a>{% endif %}</p>
+  {% endif %}
 </fieldset>
 <fieldset class="p2">
   <legend>{{ t("team.agents") }}</legend>

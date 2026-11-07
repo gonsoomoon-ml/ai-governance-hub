@@ -32,9 +32,21 @@ from fastapi.responses import JSONResponse, RedirectResponse, Response
 from hub.agentcore import AgentCoreError
 from hub.auth import current_session, require_admin, require_session, require_team_access
 from hub.diff import policy_diff
-from hub.fragment import LOCK_CHOICES, STRICT_DEFAULTS, build_fragment, empty_policy, validate_policy, version_of
+from hub.fragment import (
+    _NAME,
+    _REPO,
+    LOCK_CHOICES,
+    STRICT_DEFAULTS,
+    _validate_server,
+    build_fragment,
+    empty_policy,
+    validate_policy,
+    version_of,
+)
 from hub.gateway_api import GatewayApiError
 from hub.i18n import LANG_COOKIE, THEME_COOKIE, lang_of, theme_of, translator
+from hub.marketplace import MarketplaceError, fetch_manifest
+from hub.store import _now
 from hub.summary import receives_summary, step_of, todo_key
 from hub.timefmt import fmt_ts
 
@@ -175,8 +187,8 @@ async def save_draft(request: Request, team_id: str) -> Response:
     action = form.get("action") or "save"
     if action == "publish":
         require_admin(request)
-    doc = policy_from_form(form)
-    errors = validate_policy(doc, store.org_settings())
+    doc, errors = policy_from_form(form, _catalogs(store))
+    errors += validate_policy(doc, store.org_settings())
     if errors:
         return _render_editor(request, session, team_id, errors=errors, doc=doc, status_code=400)
     seen = _gateway_models(request, team_id)  # one-writer snapshot: the gateway value this save was made against
@@ -332,7 +344,7 @@ async def org_save(request: Request) -> Response:
     store = request.app.state.store
     form = await request.form()
     fixed = {key: (form.get(f"fixed_{key}") or None) for key in LOCK_CHOICES}
-    doc = policy_from_form(form)
+    doc, catalog_errors = policy_from_form(form, _catalogs(store))
     doc["models"] = None  # the default policy never restricts models; admin-api is per team
     org = {"locks_fixed": fixed, "default_policy": doc}
     errors = [
@@ -340,12 +352,106 @@ async def org_save(request: Request) -> Response:
         for k, v in fixed.items()
         if v and v not in LOCK_CHOICES[k]
     ]
-    errors += validate_policy(doc, {"locks_fixed": {}})
+    errors += catalog_errors + validate_policy(doc, {"locks_fixed": {}})
     if errors:
         return _render_org(request, session, errors=errors, org=org, status_code=400)
     store.put_org_settings(org)
     store.audit("org_saved", actor=session["email"], detail={"locks_fixed": fixed})
     return RedirectResponse("/org?msg=msg.org_saved", status_code=302)
+
+
+@router.post("/org/marketplaces")
+async def marketplace_add(request: Request) -> Response:
+    """회사 플러그인 저장소 등록: GitHub 에서 manifest 를 읽어 카탈로그에 넣는다(이름을 비우면 manifest 의 이름).
+
+    Register a company marketplace: read the manifest from GitHub into the catalog (name from the manifest when blank).
+    """
+    session = require_admin(request)
+    store = request.app.state.store
+    form = await request.form()
+    repo, ref = (form.get("repo") or "").strip(), (form.get("ref") or "").strip()
+    name = (form.get("name") or "").strip()
+    errors = [] if _REPO.match(repo) else ["repo must look like owner/repo"]
+    manifest = None
+    if not errors:
+        try:
+            manifest = fetch_manifest(request.app.state.http, repo, ref)
+        except MarketplaceError as exc:
+            errors.append(f"marketplace: {exc}")
+    if manifest is not None:
+        name = name or manifest["name"]
+        if not (name and _NAME.match(name)):
+            errors.append("marketplace name must be lowercase letters, digits, - or _")
+    if errors:
+        return _render_org(request, session, errors=errors, org=None, status_code=400)
+    assert manifest is not None
+    market = {"name": name, "repo": repo, "ref": ref, "path": "", "plugins": manifest["plugins"], "fetched_at": _now()}
+    store.put_marketplace(market)
+    store.audit("market_added", actor=session["email"], detail={"name": name, "repo": repo, "ref": ref})
+    return RedirectResponse("/org?msg=msg.market_added", status_code=302)
+
+
+@router.post("/org/marketplaces/{name}/refresh")
+def marketplace_refresh(request: Request, name: str) -> Response:
+    """저장소를 같은 repo·ref 로 다시 읽어 플러그인 목록을 바꾼다.
+
+    Re-read the marketplace at the stored repo/ref and replace its plugin list.
+    """
+    session = require_admin(request)
+    store = request.app.state.store
+    market = next((m for m in store.list_marketplaces() if m["name"] == name), None)
+    if market is None:
+        raise HTTPException(status_code=404, detail="marketplace is not registered")
+    try:
+        manifest = fetch_manifest(request.app.state.http, market["repo"], market.get("ref", ""), market.get("path", ""))
+    except MarketplaceError as exc:
+        return _render_org(request, session, errors=[f"marketplace: {exc}"], org=None, status_code=400)
+    store.put_marketplace({**market, "plugins": manifest["plugins"], "fetched_at": _now()})
+    store.audit("market_refreshed", actor=session["email"], detail={"name": name, "count": len(manifest["plugins"])})
+    return RedirectResponse("/org?msg=msg.market_refreshed", status_code=302)
+
+
+@router.post("/org/marketplaces/{name}/delete")
+def marketplace_delete(request: Request, name: str) -> Response:
+    """저장소를 카탈로그에서 뺀다(발행된 정책은 값을 품고 있어 그대로).
+
+    Remove a marketplace from the catalog (published policies keep their own copy).
+    """
+    session = require_admin(request)
+    request.app.state.store.delete_marketplace(name)
+    request.app.state.store.audit("market_deleted", actor=session["email"], detail={"name": name})
+    return RedirectResponse("/org?msg=msg.market_deleted", status_code=302)
+
+
+@router.post("/org/mcp-servers")
+async def mcp_server_add(request: Request) -> Response:
+    """승인한 MCP 서버 등록(이름 + https 주소).
+
+    Register an approved MCP server (name + https URL).
+    """
+    session = require_admin(request)
+    form = await request.form()
+    name, url = (form.get("name") or "").strip(), (form.get("url") or "").strip()
+    errors = _validate_server(name, {"url": url})
+    if errors:
+        return _render_org(request, session, errors=errors, org=None, status_code=400)
+    request.app.state.store.put_mcp_server(
+        {"name": name, "url": url, "description": (form.get("description") or "").strip()}
+    )
+    request.app.state.store.audit("mcp_added", actor=session["email"], detail={"name": name, "url": url})
+    return RedirectResponse("/org?msg=msg.mcp_added", status_code=302)
+
+
+@router.post("/org/mcp-servers/{name}/delete")
+def mcp_server_delete(request: Request, name: str) -> Response:
+    """MCP 서버를 카탈로그에서 뺀다.
+
+    Remove an MCP server from the catalog.
+    """
+    session = require_admin(request)
+    request.app.state.store.delete_mcp_server(name)
+    request.app.state.store.audit("mcp_deleted", actor=session["email"], detail={"name": name})
+    return RedirectResponse("/org?msg=msg.mcp_deleted", status_code=302)
 
 
 @router.get("/agents")
@@ -447,28 +553,50 @@ def audit_page(request: Request) -> Response:
 # --- helpers ---
 
 
-def policy_from_form(form: Any) -> dict:
-    """HTML 폼 -> 정책 문서. 모델은 체크박스 목록 또는 "제한 없음"(None).
+def policy_from_form(form: Any, catalogs: dict) -> tuple[dict, list[str]]:
+    """HTML 폼 -> 정책 문서 + 카탈로그 오류. 모델은 체크박스 목록 또는 "제한 없음"(None).
+    저장소·플러그인·MCP 서버는 조직 카탈로그에서 고른 이름이고, 문서에는 카탈로그의 repo·ref·url 을 복사해
+    넣는다(발행본이 카탈로그와 무관하게 완결되도록). 카탈로그에 없는 이름은 오류.
 
-    HTML form -> policy document. Models are the checked list or "unrestricted" (None).
+    HTML form -> policy document + catalog errors. Models are the checked list or "unrestricted" (None).
+    Marketplace, plugins and MCP servers are names picked from the org catalogs; the document carries a
+    copy of the catalog's repo/ref/url so a published copy stays self-contained. Unknown names are errors.
     """
+    errors: list[str] = []
     unrestricted = bool(form.get("models_unrestricted"))
     models = None if unrestricted else [m for m in form.getlist("models") if m]
-    name, repo, ref = (
-        (form.get("marketplace_name") or "").strip(),
-        (form.get("marketplace_repo") or "").strip(),
-        (form.get("marketplace_ref") or "").strip(),
-    )
+
+    markets = {m["name"]: m for m in catalogs.get("markets") or []}
+    market_name = (form.get("marketplace") or "").strip()
     marketplace = None
-    if name or repo:
-        marketplace = {"name": name, "repo": repo}
-        if ref:
-            marketplace["ref"] = ref
-    plugins = _lines(form.get("plugins"))
+    if market_name:
+        market = markets.get(market_name)
+        if market is None:
+            errors.append(f"marketplace: {market_name} is not registered in organization settings")
+            marketplace = {"name": market_name, "repo": ""}
+        else:
+            marketplace = {"name": market["name"], "repo": market["repo"]}
+            for key in ("ref", "path"):
+                if market.get(key):
+                    marketplace[key] = market[key]
+    plugins = _multi(form, "plugins")
+    if plugins and marketplace and marketplace.get("repo"):
+        known = {p["name"] for p in markets[market_name].get("plugins") or []}
+        unknown = [p for p in plugins if p not in known]
+        if unknown:
+            errors.append(f"plugins: not in marketplace {market_name}: {', '.join(unknown)}")
+
+    servers_catalog = {s["name"]: s for s in catalogs.get("mcp_servers") or []}
     servers: dict = {}
-    for line in _lines(form.get("mcp_servers")):
-        parts = line.split()
-        servers[parts[0]] = {"url": parts[1] if len(parts) > 1 else ""}
+    for line in _multi(form, "mcp_servers"):
+        name = line.split()[0]
+        server = servers_catalog.get(name)
+        if server is None:
+            errors.append(f"mcp_servers: {name} is not registered in organization settings")
+            servers[name] = {"url": ""}
+        else:
+            servers[name] = {"url": server["url"]}
+
     locks = {key: (form.get(f"lock_{key}") or STRICT_DEFAULTS[key]) for key in LOCK_CHOICES}
     doc = {
         "models": models,
@@ -478,7 +606,29 @@ def policy_from_form(form: Any) -> dict:
         "agents": [a for a in form.getlist("agents") if a],
         "locks": locks,
     }
-    return doc
+    return doc, errors
+
+
+def _multi(form: Any, key: str) -> list[str]:
+    """체크박스 여러 값 또는 여러 줄 텍스트 -> 비어 있지 않은 값 목록(순서 유지, 중복 제거).
+
+    Several checkbox values or a multi-line text -> non-empty values (order kept, duplicates dropped).
+    """
+    out: list[str] = []
+    for value in form.getlist(key):
+        for line in _lines(value):
+            if line not in out:
+                out.append(line)
+    return out
+
+
+def _catalogs(store: Any) -> dict:
+    """팀이 고르는 조직 카탈로그 둘(회사 저장소·승인 MCP 서버) — 폼 해석과 화면에 같이 쓴다.
+
+    The two org catalogs teams pick from (company marketplaces, approved MCP servers), used by both
+    form parsing and rendering.
+    """
+    return {"markets": store.list_marketplaces(), "mcp_servers": store.list_mcp_servers()}
 
 
 def _publish(request: Request, session: dict, team_id: str, doc: dict, *, seen: list[str] | None = None) -> int:
@@ -666,6 +816,8 @@ def _render_editor(
         preview_basis=preview_basis,
         receives=receives,
         todo=todo_key(session["role"], draft, published),
+        markets=store.list_marketplaces(),
+        servers=store.list_mcp_servers(),
         step=step,
         **preview,
         models=models,
@@ -701,6 +853,8 @@ def _render_org(
         doc=doc,
         default_summary=_default_policy_summary(_t(request), doc),
         receiving=_teams_receiving_default(request),
+        markets=store.list_marketplaces(),
+        servers=store.list_mcp_servers(),
         **_preview_context(request, doc, "/org/preview.json"),
         catalog=store.list_agents(),
         errors=errors or [],

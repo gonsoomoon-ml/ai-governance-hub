@@ -139,22 +139,22 @@ def test_org_fixed_locks_are_read_only_in_the_default_policy(client, settings, s
     assert 'name="lock_plugin_sources" value="company_only"' in page
 
 
-def test_editor_fields_show_examples_beside_the_box_not_inside(client, settings, store):
-    """편집 폼: 예시는 칸 안 placeholder 가 아니라 칸 옆 회색 글('예: …'), 설명은 한 줄 + '자세히', MCP 범례에 백틱 없음,
-    tool-gateway 자동 추가 안내, 모델 제한 없음 토글 JS.
+def test_editor_fields_are_pick_lists_from_the_org_catalogs(client, settings, store):
+    """편집 폼: 저장소는 드롭다운, 플러그인·MCP 서버는 카탈로그의 체크박스(자유 입력 없음), 설명은 한 줄 + '자세히',
+    MCP 범례에 백틱 없음, tool-gateway 자동 추가 안내, 모델 제한 없음 토글 JS.
 
-    Editor: examples as grey text beside the box (not placeholders), one-line help + 'more', MCP legend without
-    backticks, the tool-gateway note, the unrestricted-models toggle script.
+    Editor: repository as a dropdown, plugins and MCP servers as checkboxes from the catalogs (no free text),
+    one-line help + 'more', MCP legend without backticks, the tool-gateway note, the unrestricted-models toggle.
     """
     managed(store)
     login_as(client, settings)
 
     page = client.get(f"/teams/{TEAM}").text
 
-    assert "예: owner/repo" in page and "예: deepwiki https://mcp.deepwiki.com/mcp" in page
-    assert 'placeholder="owner/repo"' not in page
+    assert 'name="marketplace"' in page and "example-extensions — example/claude-extensions @ demo-2026-11" in page
+    assert 'name="plugins" value="deck-design"' in page and 'name="mcp_servers" value="deepwiki"' in page
+    assert 'placeholder="owner/repo"' not in page and "marketplace_repo" not in page
     assert page.count('<details class="more">') == 5 and "자세히" in page
-    assert "태그 또는 브랜치" in page
     assert "`" not in page.split("관리형 MCP 서버")[1].split("</legend>")[0]
     assert "tool-gateway" in page
     assert "models_unrestricted" in page and "disabled" in page

@@ -76,7 +76,32 @@ def store(settings) -> Store:
     with mock_aws():
         s = Store(settings.ddb_table, settings.aws_region)
         s.ensure_table()
+        seed_catalogs(s)
         yield s
+
+
+MARKET = {
+    "name": "example-extensions",
+    "repo": "example/claude-extensions",
+    "ref": "demo-2026-11",
+    "path": "",
+    "plugins": [
+        {"name": "deck-design", "description": "Build slide decks"},
+        {"name": "infographic-design", "description": "One infographic image"},
+        {"name": "concise-response", "description": "Summary-first responses"},
+    ],
+    "fetched_at": "2026-11-07T00:00:00Z",
+}
+MCP_SERVER = {"name": "deepwiki", "url": "https://mcp.deepwiki.com/mcp", "description": "Public docs search"}
+
+
+def seed_catalogs(store: Store) -> None:
+    """팀이 고르는 조직 카탈로그(회사 저장소 1 · MCP 서버 1)를 심는다.
+
+    Seed the org catalogs teams pick from (one company marketplace, one MCP server).
+    """
+    store.put_marketplace(dict(MARKET))
+    store.put_mcp_server(dict(MCP_SERVER))
 
 
 @pytest.fixture
@@ -103,10 +128,57 @@ def client(settings, store, admin_api, agentcore) -> TestClient:
 
     A FastAPI test client wired to the moto-backed store, the fake admin-api and the fake AgentCore (no redirect following).
     """
-    http = httpx.Client(transport=httpx.MockTransport(lambda request: admin_api.handle(request)))
-    return TestClient(
-        create_app(settings=settings, store=store, http_client=http, agentcore=agentcore), follow_redirects=False
-    )
+    github = FakeGitHub()
+    http = httpx.Client(transport=httpx.MockTransport(lambda request: _route(request, admin_api, github)))
+    app = create_app(settings=settings, store=store, http_client=http, agentcore=agentcore)
+    app.state.github = github  # tests reach the fake through the app
+    return TestClient(app, follow_redirects=False)
+
+
+def _route(request: httpx.Request, admin_api: FakeAdminApi, github: FakeGitHub) -> httpx.Response:
+    """호스트로 가짜를 고른다: GitHub raw 는 FakeGitHub, 나머지는 admin-api 흉내.
+
+    Pick the fake by host: GitHub raw -> FakeGitHub, everything else -> the admin-api fake.
+    """
+    if request.url.host == "raw.githubusercontent.com":
+        return github.handle(request)
+    return admin_api.handle(request)
+
+
+class FakeGitHub:
+    """raw.githubusercontent.com 흉내: (repo, ref) 별 marketplace.json. 없으면 404, raw 문자열이면 그대로.
+
+    Imitates raw.githubusercontent.com: a marketplace.json per (repo, ref); 404 when absent; a raw string as is.
+    """
+
+    def __init__(self):
+        self.manifests = {
+            ("example/claude-extensions", "demo-2026-11"): {
+                "name": "example-extensions",
+                "owner": {"name": "example"},
+                "plugins": [
+                    {"name": "deck-design", "description": "Build slide decks", "source": "./plugins/deck-design"},
+                    {"name": "infographic-design", "description": "One infographic image", "source": "./x"},
+                    {"name": "concise-response", "description": "Summary-first responses", "source": "./y"},
+                ],
+            }
+        }
+        self.calls: list[str] = []
+
+    def handle(self, request: httpx.Request) -> httpx.Response:
+        """GET /<owner>/<repo>/<ref>/.claude-plugin/marketplace.json.
+
+        GET /<owner>/<repo>/<ref>/.claude-plugin/marketplace.json.
+        """
+        self.calls.append(request.url.path)
+        parts = request.url.path.strip("/").split("/")
+        repo, ref = "/".join(parts[:2]), parts[2] if len(parts) > 2 else ""
+        body = self.manifests.get((repo, ref))
+        if body is None:
+            return httpx.Response(404, text="404: Not Found")
+        if isinstance(body, str):
+            return httpx.Response(200, text=body)
+        return httpx.Response(200, json=body)
 
 
 class FakeAgentCore:

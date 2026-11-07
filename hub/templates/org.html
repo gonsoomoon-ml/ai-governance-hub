@@ -3,7 +3,7 @@
 <h1>{{ t("org.title") }}{% if pillar %} <span class="chip {{ pillar }}">{{ t("chip." + pillar) }}</span>{% endif %}</h1>
 <p class="intro">{{ t("intro.org") }}</p>
 {% if errors %}<div class="err"><strong>{{ t("team.errors") }}</strong><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
-<form method="post" action="/org">
+<form method="post" action="/org" id="org-form">
   <div class="card">
     <h2 style="margin-top:0">{{ t("org.locks") }}</h2>
     <p class="hint">{{ t("org.locks.hint") }}</p>
@@ -16,6 +16,50 @@
     </div>
     {% endfor %}
     <div class="actions"><button class="primary">{{ t("org.save") }}</button></div>
+  </div>
+
+  {# catalogs the teams pick from — their inputs belong to the small forms declared after the page form (form= attribute) #}
+  <div class="card p2 catalog">
+    <h2 style="margin-top:0">{{ t("org.markets") }}</h2>
+    <p class="hint">{{ t("org.markets.hint") }}</p>
+    {% if markets %}
+    <div class="table-wrap"><table>
+      <tr><th>{{ t("org.markets.col.name") }}</th><th>{{ t("org.markets.col.repo") }}</th><th>{{ t("org.markets.col.plugins") }}</th><th>{{ t("org.markets.col.fetched") }}</th><th></th></tr>
+      {% for m in markets %}
+      <tr><td><strong>{{ m.name }}</strong></td><td class="tech">{{ m.repo }}{% if m.ref %} @ {{ m.ref }}{% endif %}</td>
+        <td>{% for p in m.plugins %}<span class="pill">{{ p.name }}</span> {% else %}<span class="muted">{{ t("changes.empty") }}</span>{% endfor %}</td>
+        <td class="muted">{{ ts(m.fetched_at) }}</td>
+        <td class="right"><button class="secondary" form="market-ops" formaction="/org/marketplaces/{{ m.name }}/refresh">{{ t("org.markets.refresh") }}</button>
+          <button class="danger" form="market-ops" formaction="/org/marketplaces/{{ m.name }}/delete" onclick="return confirm({{ t('org.markets.delete.confirm') | tojson }})">{{ t("org.markets.delete") }}</button></td></tr>
+      {% endfor %}
+    </table></div>
+    {% else %}<p class="muted">{{ t("org.markets.none") }}</p>{% endif %}
+    <div class="addrow">
+      <label>{{ t("team.marketplace.repo") }} <span class="ex">{{ t("ex.marketplace.repo") }}</span><input type="text" name="repo" form="market-add" required></label>
+      <label>{{ t("team.marketplace.ref") }} <span class="ex">{{ t("ex.marketplace.ref") }}</span><input type="text" name="ref" form="market-add"></label>
+      <label>{{ t("org.markets.name.optional") }} <span class="ex">{{ t("ex.marketplace.name") }}</span><input type="text" name="name" form="market-add"></label>
+      <button class="secondary" form="market-add" data-busy="{{ t('busy') }}">{{ t("org.markets.add") }}</button>
+    </div>
+  </div>
+
+  <div class="card p2 catalog">
+    <h2 style="margin-top:0">{{ t("org.mcp") }}</h2>
+    <p class="hint">{{ t("org.mcp.hint") }}</p>
+    {% if servers %}
+    <div class="table-wrap"><table>
+      <tr><th>{{ t("org.markets.col.name") }}</th><th>{{ t("org.mcp.col.url") }}</th><th></th></tr>
+      {% for s in servers %}
+      <tr><td><strong>{{ s.name }}</strong>{% if s.description %} <span class="muted">{{ s.description }}</span>{% endif %}</td><td class="tech">{{ s.url }}</td>
+        <td class="right"><button class="danger" form="mcp-ops" formaction="/org/mcp-servers/{{ s.name }}/delete" onclick="return confirm({{ t('org.mcp.delete.confirm') | tojson }})">{{ t("org.markets.delete") }}</button></td></tr>
+      {% endfor %}
+    </table></div>
+    {% else %}<p class="muted">{{ t("org.mcp.none") }}</p>{% endif %}
+    <div class="addrow">
+      <label>{{ t("org.markets.col.name") }} <span class="ex">{{ t("ex.mcp.name") }}</span><input type="text" name="name" form="mcp-add" required></label>
+      <label>{{ t("org.mcp.col.url") }} <span class="ex">{{ t("ex.mcp.url") }}</span><input type="text" name="url" form="mcp-add" required></label>
+      <label>{{ t("org.mcp.desc") }}<input type="text" name="description" form="mcp-add"></label>
+      <button class="secondary" form="mcp-add">{{ t("org.mcp.add") }}</button>
+    </div>
   </div>
 
   {# the safety net is optional and usually empty: folded, one summary line, opened only to show a validation error #}
@@ -31,4 +75,8 @@
     <div class="actions"><button class="primary">{{ t("org.save") }}</button></div>
   </details>
 </form>
+<form method="post" action="/org/marketplaces" id="market-add"></form>
+<form method="post" id="market-ops"></form>
+<form method="post" action="/org/mcp-servers" id="mcp-add"></form>
+<form method="post" id="mcp-ops"></form>
 {% endblock %}
