@@ -15,18 +15,20 @@
       {% endfor %}
     </div>
     {% endfor %}
+    <div class="actions"><button class="primary">{{ t("org.save") }}</button></div>
   </div>
 
-  <div class="card">
-    <h2 style="margin-top:0">{{ t("org.default_policy") }}</h2>
+  {# the safety net is optional and usually empty: folded, one summary line, opened only to show a validation error #}
+  <details class="card fold"{% if errors %} open{% endif %}>
+    <summary><strong>{{ t("org.default_policy") }}</strong> <span class="muted">— {{ t("org.default_policy.optional") }} · {{ default_summary }}{% if receiving is not none %} · {{ t("org.receiving.count").format(n=receiving | length) }}{% endif %}</span></summary>
     <p class="hint">{{ t("org.default_policy.hint") }}</p>
     {% if receiving is not none %}
     <p><strong>{{ t("org.receiving") }}:</strong>
       {% if receiving %}{{ receiving | join(" · ") }}{% else %}<span class="muted">{{ t("org.receiving.none") }}</span>{% endif %}</p>
     {% endif %}
-    {% with with_models=false %}{% include "_policy_form.html" %}{% endwith %}
+    {% with with_models=false, examples=false %}{% include "_policy_form.html" %}{% endwith %}
     <div style="margin-top:8px">{% with preview_title=t("preview.title.org") %}{% include "_preview.html" %}{% endwith %}</div>
-  </div>
-  <div class="actions"><button class="primary">{{ t("org.save") }}</button></div>
+    <div class="actions"><button class="primary">{{ t("org.save") }}</button></div>
+  </details>
 </form>
 {% endblock %}

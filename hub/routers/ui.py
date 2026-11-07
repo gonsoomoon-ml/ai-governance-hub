@@ -698,6 +698,7 @@ def _render_org(
         session=session,
         org=org,
         doc=doc,
+        default_summary=_default_policy_summary(_t(request), doc),
         receiving=_teams_receiving_default(request),
         **_preview_context(request, doc, "/org/preview.json"),
         catalog=store.list_agents(),
@@ -707,6 +708,21 @@ def _render_org(
         mcp_text="\n".join(f"{n} {s.get('url', '')}" for n, s in (doc.get("mcp_servers") or {}).items()),
         plugins_text="\n".join(doc.get("plugins") or []),
     )
+
+
+def _default_policy_summary(t, doc: dict) -> str:
+    """안전망 절의 요약 한 줄 — 비어 있으면 '잠금만 내려갑니다', 아니면 플러그인·MCP·에이전트 개수.
+
+    One-line summary of the safety net: 'only the locks go out' when empty, else plugin/MCP/agent counts.
+    """
+    counts = {
+        "plugins": len(doc.get("plugins") or []),
+        "mcp": len(doc.get("mcp_servers") or {}),
+        "agents": len(doc.get("agents") or []),
+    }
+    if not doc.get("marketplace") and not any(counts.values()):
+        return t("org.default_policy.empty")
+    return t("org.default_policy.set").format(**counts)
 
 
 def _teams_receiving_default(request: Request) -> list[str] | None:

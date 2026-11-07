@@ -171,6 +171,11 @@
   ol.steps .step.done { background: var(--pill-ok-bg); color: var(--pill-ok-ink); }
   .back { display: inline-block; margin-bottom: 8px; text-decoration: none; }
   details summary { cursor: pointer; }
+  details.fold > summary { font-size: 1.15em; list-style: none; }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary::before { content: "▸ "; color: var(--muted); }
+  details.fold[open] > summary::before { content: "▾ "; }
+  details.fold[open] > summary { margin-bottom: 8px; }
   .points { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 4px; }
   .point { padding: 6px 12px; border-radius: var(--radius); border: 1.5px solid var(--line); background: var(--card); font-size: 0.95em; }
   .point.p1 { border-color: var(--coral); } .point.p2 { border-color: var(--blue); }

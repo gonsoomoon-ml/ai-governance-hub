@@ -24,16 +24,16 @@
 <fieldset class="p2">
   <legend>{{ t("team.marketplace") }}</legend>
   <p class="hint">{{ t("help.marketplace") }}</p>
-  <label>{{ t("team.marketplace.name") }} <input type="text" name="marketplace_name" placeholder="my-extensions" value="{{ doc.marketplace.name if doc.marketplace else '' }}"></label>
-  <label>{{ t("team.marketplace.repo") }} <input type="text" name="marketplace_repo" placeholder="owner/repo" value="{{ doc.marketplace.repo if doc.marketplace else '' }}"></label>
-  <label>{{ t("team.marketplace.ref") }} <input type="text" name="marketplace_ref" placeholder="v1.0" value="{{ doc.marketplace.ref if doc.marketplace and doc.marketplace.ref else '' }}"></label>
-  <label>{{ t("team.plugins") }} <textarea name="plugins" placeholder="deck-design">{{ plugins_text }}</textarea></label>
+  <label>{{ t("team.marketplace.name") }} <input type="text" name="marketplace_name"{% if examples | default(true) %} placeholder="my-extensions"{% endif %} value="{{ doc.marketplace.name if doc.marketplace else '' }}"></label>
+  <label>{{ t("team.marketplace.repo") }} <input type="text" name="marketplace_repo"{% if examples | default(true) %} placeholder="owner/repo"{% endif %} value="{{ doc.marketplace.repo if doc.marketplace else '' }}"></label>
+  <label>{{ t("team.marketplace.ref") }} <input type="text" name="marketplace_ref"{% if examples | default(true) %} placeholder="v1.0"{% endif %} value="{{ doc.marketplace.ref if doc.marketplace and doc.marketplace.ref else '' }}"></label>
+  <label>{{ t("team.plugins") }} <textarea name="plugins"{% if examples | default(true) %} placeholder="deck-design"{% endif %}>{{ plugins_text }}</textarea></label>
   <p class="hint">{{ t("help.plugins") }}</p>
 </fieldset>
 <fieldset class="p2">
   <legend>{{ t("team.mcp_servers") }}</legend>
   <p class="hint">{{ t("help.mcp") }}</p>
-  <textarea name="mcp_servers" placeholder="deepwiki https://mcp.deepwiki.com/mcp">{{ mcp_text }}</textarea>
+  <textarea name="mcp_servers"{% if examples | default(true) %} placeholder="deepwiki https://mcp.deepwiki.com/mcp"{% endif %}>{{ mcp_text }}</textarea>
 </fieldset>
 <fieldset class="p2">
   <legend>{{ t("team.agents") }}</legend>

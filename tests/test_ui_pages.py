@@ -153,3 +153,32 @@ def test_editor_fields_carry_placeholders_and_plain_hints(client, settings, stor
     assert "`" not in page.split("관리형 MCP 서버")[1].split("</legend>")[0]
     assert "tool-gateway" in page
     assert "models_unrestricted" in page and "disabled" in page
+
+
+def test_org_page_folds_the_safety_net_and_summarizes_it(client, settings, store):
+    """조직 설정: 안전망 절은 접혀 있고 요약 한 줄(선택 사항 · 비어 있음 · 받는 팀 수), 입력 칸에 placeholder 없음.
+    채우면 요약이 '설정됨 — 개수' 로, 검증 오류가 있으면 펼쳐진 채 렌더.
+
+    Org page: the safety net is folded behind one summary line (optional · empty · receiving count) and the inputs
+    carry no placeholders. Once filled the summary says 'set — counts'; a validation error renders it open.
+    """
+    managed(store)
+    login_as(client, settings)
+
+    page = client.get("/org").text
+    assert '<details class="card fold">' in page
+    assert "선택 사항" in page and "비어 있음(잠금만 내려감)" in page
+    assert re.search(r"받는 팀 \d+", page)
+    assert "placeholder=" not in page
+
+    org_form = {"fixed_plugin_sources": "", "fixed_personal_customization": "block", "fixed_mcp": ""}
+    client.post(
+        "/org", data={**org_form, **{k: v for k, v in FORM.items() if k != "models"}, "models_unrestricted": "on"}
+    )
+    page = client.get("/org").text
+    assert "설정됨(플러그인 2 · MCP 서버 1 · 에이전트 2)" in page
+
+    bad = client.post(
+        "/org", data={**org_form, "mcp_servers": "bad http://insecure.example/mcp", "models_unrestricted": "on"}
+    )
+    assert bad.status_code == 400 and '<details class="card fold" open>' in bad.text
