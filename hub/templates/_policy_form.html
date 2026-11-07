@@ -38,10 +38,14 @@
   </label>
   <div class="hint">{{ t("team.plugins.pick") }}</div>
   {% for m in markets %}
+  {% set approved = m.plugins | selectattr("status", "equalto", "APPROVED") | list %}
   <div class="choices plugin-group" data-market="{{ m.name }}"{% if m.name != chosen %} hidden{% endif %}>
-    {% for p in m.plugins %}
+    {% for p in approved %}
     <label><input type="checkbox" name="plugins" value="{{ p.name }}" {% if m.name == chosen and p.name in doc.plugins %}checked{% endif %}{% if m.name != chosen %} disabled{% endif %}> <strong>{{ p.name }}</strong>{% if p.description %} <span class="muted">{{ p.description }}</span>{% endif %}</label>
-    {% else %}<span class="muted">{{ t("changes.empty") }}</span>{% endfor %}
+    {% else %}<span class="muted">{{ t("team.plugins.none_approved") }}</span>{% endfor %}
+    {% if m.name == chosen %}{% for name in doc.plugins if name not in (approved | map(attribute="name") | list) %}
+    <label><input type="checkbox" name="plugins" value="{{ name }}" checked> <strong>{{ name }}</strong> <span class="muted">{{ t("team.plugin.unapproved") }}</span></label>
+    {% endfor %}{% endif %}
   </div>
   {% endfor %}
   {% if chosen and chosen not in (markets | map(attribute="name") | list) %}
@@ -61,7 +65,7 @@
     })();
   </script>
   {% else %}
-  <p class="muted">{{ t("team.catalog.empty.markets") }}{% if session and session.role == "admin" %} <a href="/org">{{ t("nav.org") }} ▸</a>{% endif %}</p>
+  <p class="muted">{{ t("team.catalog.empty.markets") }}{% if session and session.role == "admin" %} <a href="/plugins">{{ t("nav.plugins") }} ▸</a>{% endif %}</p>
   {% endif %}
 </fieldset>
 {# the deck's two service-type items, both reached through the one tool-gateway entry: in-house MCP servers, in-house agents #}

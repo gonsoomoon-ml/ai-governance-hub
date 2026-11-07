@@ -86,9 +86,9 @@ MARKET = {
     "ref": "demo-2026-11",
     "path": "",
     "plugins": [
-        {"name": "deck-design", "description": "Build slide decks"},
-        {"name": "infographic-design", "description": "One infographic image"},
-        {"name": "concise-response", "description": "Summary-first responses"},
+        {"name": "deck-design", "description": "Build slide decks", "status": "APPROVED"},
+        {"name": "infographic-design", "description": "One infographic image", "status": "APPROVED"},
+        {"name": "concise-response", "description": "Summary-first responses", "status": "APPROVED"},
     ],
     "fetched_at": "2026-11-07T00:00:00Z",
 }

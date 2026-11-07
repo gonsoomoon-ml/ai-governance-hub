@@ -24,6 +24,7 @@ def test_every_page_opens_with_an_intro_line(client, settings, store):
         f"/teams/{TEAM}": "다음 조회",
         "/pending": "변경 사항",
         "/org": "안전망",
+        "/plugins": "심사하는 곳",
         "/agents": "레지스트리",
         "/audit": "누가 언제",
         "/help": "용어",

@@ -359,11 +359,23 @@ async def org_save(request: Request) -> Response:
     return RedirectResponse("/org?msg=msg.org_saved", status_code=302)
 
 
-@router.post("/org/marketplaces")
+@router.get("/plugins")
+def plugins_page(request: Request) -> Response:
+    """플러그인 저장소 화면(관리자): 저장소 등록·다시 읽기·삭제 + 플러그인 항목별 심사.
+
+    Plugin repositories (admin): register, re-read, remove repositories; review each plugin.
+    """
+    session = require_admin(request)
+    return _render_plugins(request, session, errors=None)
+
+
+@router.post("/plugins/marketplaces")
 async def marketplace_add(request: Request) -> Response:
     """회사 플러그인 저장소 등록: GitHub 에서 manifest 를 읽어 카탈로그에 넣는다(이름을 비우면 manifest 의 이름).
+    읽힌 플러그인은 모두 '승인 대기' 로 들어온다.
 
-    Register a company marketplace: read the manifest from GitHub into the catalog (name from the manifest when blank).
+    Register a company marketplace: read the manifest from GitHub into the catalog (name from the manifest
+    when blank). Every plugin read starts as PENDING.
     """
     session = require_admin(request)
     store = request.app.state.store
@@ -382,19 +394,21 @@ async def marketplace_add(request: Request) -> Response:
         if not (name and _NAME.match(name)):
             errors.append("marketplace name must be lowercase letters, digits, - or _")
     if errors:
-        return _render_org(request, session, errors=errors, org=None, status_code=400)
+        return _render_plugins(request, session, errors=errors, status_code=400)
     assert manifest is not None
-    market = {"name": name, "repo": repo, "ref": ref, "path": "", "plugins": manifest["plugins"], "fetched_at": _now()}
+    existing = next((m for m in store.list_marketplaces() if m["name"] == name), None)
+    plugins = _merge_plugin_status(manifest["plugins"], existing["plugins"] if existing else [])
+    market = {"name": name, "repo": repo, "ref": ref, "path": "", "plugins": plugins, "fetched_at": _now()}
     store.put_marketplace(market)
     store.audit("market_added", actor=session["email"], detail={"name": name, "repo": repo, "ref": ref})
-    return RedirectResponse("/org?msg=msg.market_added", status_code=302)
+    return RedirectResponse("/plugins?msg=msg.market_added", status_code=302)
 
 
-@router.post("/org/marketplaces/{name}/refresh")
+@router.post("/plugins/marketplaces/{name}/refresh")
 def marketplace_refresh(request: Request, name: str) -> Response:
-    """저장소를 같은 repo·ref 로 다시 읽어 플러그인 목록을 바꾼다.
+    """저장소를 같은 repo·ref 로 다시 읽어 플러그인 목록을 바꾼다. 이미 심사한 플러그인의 상태는 유지, 새 것은 승인 대기.
 
-    Re-read the marketplace at the stored repo/ref and replace its plugin list.
+    Re-read the marketplace at the stored repo/ref. Reviewed plugins keep their status; new ones start PENDING.
     """
     session = require_admin(request)
     store = request.app.state.store
@@ -404,13 +418,14 @@ def marketplace_refresh(request: Request, name: str) -> Response:
     try:
         manifest = fetch_manifest(request.app.state.http, market["repo"], market.get("ref", ""), market.get("path", ""))
     except MarketplaceError as exc:
-        return _render_org(request, session, errors=[f"marketplace: {exc}"], org=None, status_code=400)
-    store.put_marketplace({**market, "plugins": manifest["plugins"], "fetched_at": _now()})
-    store.audit("market_refreshed", actor=session["email"], detail={"name": name, "count": len(manifest["plugins"])})
-    return RedirectResponse("/org?msg=msg.market_refreshed", status_code=302)
+        return _render_plugins(request, session, errors=[f"marketplace: {exc}"], status_code=400)
+    plugins = _merge_plugin_status(manifest["plugins"], market.get("plugins") or [])
+    store.put_marketplace({**market, "plugins": plugins, "fetched_at": _now()})
+    store.audit("market_refreshed", actor=session["email"], detail={"name": name, "count": len(plugins)})
+    return RedirectResponse("/plugins?msg=msg.market_refreshed", status_code=302)
 
 
-@router.post("/org/marketplaces/{name}/delete")
+@router.post("/plugins/marketplaces/{name}/delete")
 def marketplace_delete(request: Request, name: str) -> Response:
     """저장소를 카탈로그에서 뺀다(발행된 정책은 값을 품고 있어 그대로).
 
@@ -419,7 +434,67 @@ def marketplace_delete(request: Request, name: str) -> Response:
     session = require_admin(request)
     request.app.state.store.delete_marketplace(name)
     request.app.state.store.audit("market_deleted", actor=session["email"], detail={"name": name})
-    return RedirectResponse("/org?msg=msg.market_deleted", status_code=302)
+    return RedirectResponse("/plugins?msg=msg.market_deleted", status_code=302)
+
+
+@router.post("/plugins/marketplaces/{name}/plugins/{plugin}/{decision}")
+def plugin_decide(request: Request, name: str, plugin: str, decision: str) -> Response:
+    """플러그인 하나를 승인(approve) 또는 반려(reject). 승인된 것만 팀 정책에서 고를 수 있다.
+
+    Approve or reject one plugin. Only approved plugins can be picked in team policies.
+    """
+    session = require_admin(request)
+    if decision not in ("approve", "reject"):
+        raise HTTPException(status_code=404, detail="unknown decision")
+    store = request.app.state.store
+    market = next((m for m in store.list_marketplaces() if m["name"] == name), None)
+    if market is None or not any(p["name"] == plugin for p in market.get("plugins") or []):
+        raise HTTPException(status_code=404, detail="plugin is not in the catalog")
+    status = "APPROVED" if decision == "approve" else "REJECTED"
+    plugins = [
+        {**p, "status": status, "decided_by": session["email"], "decided_at": _now()} if p["name"] == plugin else p
+        for p in market["plugins"]
+    ]
+    store.put_marketplace({**market, "plugins": plugins})
+    store.audit(f"plugin_{status.lower()}", actor=session["email"], detail={"marketplace": name, "plugin": plugin})
+    return RedirectResponse(f"/plugins?msg=msg.plugin_{status.lower()}", status_code=302)
+
+
+def _merge_plugin_status(fresh: list[dict], previous: list[dict]) -> list[dict]:
+    """manifest 에서 읽은 플러그인에 이전 심사 상태를 입힌다(없으면 PENDING). manifest 에서 빠진 것은 버린다.
+
+    Dress plugins read from the manifest with their previous review status (PENDING when new); plugins gone
+    from the manifest are dropped.
+    """
+    old = {p["name"]: p for p in previous}
+    out = []
+    for entry in fresh:
+        prev = old.get(entry["name"], {})
+        out.append(
+            {
+                "name": entry["name"],
+                "description": entry.get("description", ""),
+                "status": prev.get("status", "PENDING"),
+                "decided_by": prev.get("decided_by", ""),
+                "decided_at": prev.get("decided_at", ""),
+            }
+        )
+    return out
+
+
+def _render_plugins(request: Request, session: dict, *, errors: list[str] | None, status_code: int = 200) -> Response:
+    """플러그인 저장소 화면 렌더.
+
+    Render the plugin repositories page.
+    """
+    return _render(
+        request,
+        "plugins.html",
+        session=session,
+        markets=request.app.state.store.list_marketplaces(),
+        errors=errors or [],
+        status_code=status_code,
+    )
 
 
 @router.get("/agents")
@@ -550,10 +625,10 @@ def policy_from_form(form: Any, catalogs: dict) -> tuple[dict, list[str]]:
                     marketplace[key] = market[key]
     plugins = _multi(form, "plugins")
     if plugins and marketplace and marketplace.get("repo"):
-        known = {p["name"] for p in markets[market_name].get("plugins") or []}
+        known = {p["name"] for p in markets[market_name].get("plugins") or [] if p.get("status") == "APPROVED"}
         unknown = [p for p in plugins if p not in known]
         if unknown:
-            errors.append(f"plugins: not in marketplace {market_name}: {', '.join(unknown)}")
+            errors.append(f"plugins: not approved in marketplace {market_name}: {', '.join(unknown)}")
 
     # no direct MCP servers: PCs connect to the tool gateway only (deck slide 4); the key stays for the fragment
     servers: dict = {}
@@ -911,13 +986,13 @@ def _nav_context(request: Request, session: dict | None) -> dict:
 
 
 def _pillar_of(path: str) -> str:
-    """경로 -> 덱의 기둥 칩: 정책 화면은 p1(AI 거버넌스), 사내 에이전트는 p2(공유), 그 밖은 없음.
+    """경로 -> 덱의 기둥 칩: 정책 화면은 p1(AI 거버넌스), 플러그인·사내 에이전트는 p2(공유), 그 밖은 없음.
 
-    Path -> deck pillar chip: policy pages p1 (AI governance), agents p2 (sharing), none otherwise.
+    Path -> deck pillar chip: policy pages p1 (AI governance), plugins and agents p2 (sharing), none otherwise.
     """
     if path.startswith(("/teams", "/pending", "/org")):
         return "p1"
-    if path.startswith("/agents"):
+    if path.startswith(("/agents", "/plugins")):
         return "p2"
     return ""
 
