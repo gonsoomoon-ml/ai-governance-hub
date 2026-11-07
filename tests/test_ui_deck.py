@@ -190,7 +190,13 @@ def test_agents_page_reviews_mcp_servers_and_agents_in_two_tables(client, settin
     """
     agentcore.records = [
         {"name": "dev-guide-qa", "kind": "AGENT", "tools": ["ask"], "status": "PENDING_APPROVAL", "description": "Q&A"},
-        {"name": "api-catalog", "kind": "MCP", "tools": ["list_apis"], "status": "APPROVED", "description": "API specs"},
+        {
+            "name": "api-catalog",
+            "kind": "MCP",
+            "tools": ["list_apis"],
+            "status": "APPROVED",
+            "description": "API specs",
+        },
     ]
     login_as(client, settings)
 
