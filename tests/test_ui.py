@@ -33,7 +33,7 @@ def test_pages_need_a_login(client):
 
     Without a login, every page redirects to /login.
     """
-    for path in ("/", "/teams", f"/teams/{TEAM}", "/pending", "/org", "/audit", "/agents"):
+    for path in ("/", "/teams", f"/teams/{TEAM}", "/pending", "/org", "/audit", "/agents", "/mcp-servers", "/plugins"):
         resp = client.get(path)
         assert resp.status_code == 302 and resp.headers["location"] == "/login", path
 
@@ -282,7 +282,7 @@ def test_agents_page_lists_registry_records_and_approval_refreshes_the_catalog(c
     ]
     login_as(client, settings)
 
-    page = client.get("/agents")
+    page = client.get("/mcp-servers")  # api-catalog is an MCP record
     assert page.status_code == 200 and "승인 대기" in page.text
 
     assert client.post("/agents/api-catalog/approve").status_code == 302

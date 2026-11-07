@@ -50,7 +50,14 @@ def test_leader_sidebar_has_only_own_team_and_help(client, settings, store):
 
     assert "engineering / platform" in nav and "engineering / mobile" not in nav
     assert 'href="/help"' in nav
-    for admin_only in ('href="/pending"', 'href="/org"', 'href="/plugins"', 'href="/agents"', 'href="/audit"'):
+    for admin_only in (
+        'href="/pending"',
+        'href="/org"',
+        'href="/plugins"',
+        'href="/mcp-servers"',
+        'href="/agents"',
+        'href="/audit"',
+    ):
         assert admin_only not in nav, admin_only
 
 

@@ -71,12 +71,12 @@ def test_agents_page_translates_statuses_and_marks_catalog_members(client, setti
     store.put_agents([{"name": "dev-guide-qa", "kind": "AGENT", "tools": ["ask"], "endpoint": "https://example/qa"}])
     login_as(client, settings)
 
-    page = client.get("/agents").text
+    mcp, agents = client.get("/mcp-servers").text, client.get("/agents").text
 
-    assert "승인 대기" in page and "승인됨" in page
-    assert "PENDING_APPROVAL" not in page
-    assert "팀 정책에서 선택 가능" in page
-    assert page.count("<td>예</td>") == 1 and page.count("<td>아니오</td>") == 1
+    assert "승인 대기" in mcp and "승인됨" in agents
+    assert "PENDING_APPROVAL" not in mcp
+    assert "팀 정책에서 선택 가능" in mcp and "팀 정책에서 선택 가능" in agents
+    assert mcp.count("<td>아니오</td>") == 1 and agents.count("<td>예</td>") == 1
 
 
 def test_audit_page_shows_labels_team_names_and_local_time(client, settings, store):

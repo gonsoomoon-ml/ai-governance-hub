@@ -497,11 +497,28 @@ def _render_plugins(request: Request, session: dict, *, errors: list[str] | None
     )
 
 
+@router.get("/mcp-servers")
+def mcp_servers_page(request: Request) -> Response:
+    """사내 MCP 서버 심사: 레지스트리 레코드 가운데 종류 MCP.
+
+    In-house MCP server review: registry records of kind MCP.
+    """
+    return _render_registry(request, "MCP")
+
+
 @router.get("/agents")
 def agents_page(request: Request) -> Response:
-    """사내 에이전트: 카탈로그(허브 표) + 레지스트리 레코드(AgentCore).
+    """사내 에이전트 심사: 레지스트리 레코드 가운데 종류 AGENT(종류 미상 포함).
 
-    In-house agents: the catalog (hub table) + registry records (AgentCore).
+    In-house agent review: registry records of kind AGENT (unknown kinds included).
+    """
+    return _render_registry(request, "AGENT")
+
+
+def _render_registry(request: Request, kind: str) -> Response:
+    """레지스트리 심사 화면 렌더 — 한 종류만(MCP 는 kind == MCP, AGENT 는 그 밖 전부) + 카탈로그.
+
+    Render the registry review page for one kind (MCP: kind == MCP; AGENT: everything else) plus the catalog.
     """
     session = require_admin(request)
     agentcore = request.app.state.agentcore
@@ -513,18 +530,28 @@ def agents_page(request: Request) -> Response:
             records = agentcore.list_records()
         except Exception as exc:  # noqa: BLE001 — shown on the page, never a 500
             error = f"{type(exc).__name__}: {exc}"
+    records = [r for r in records if (r.get("kind") == "MCP") == (kind == "MCP")]
     return _render(
         request,
         "agents.html",
         session=session,
+        kind=kind,
         catalog=request.app.state.store.list_agents(),
         records=records,
         error=error,
     )
 
 
+def _back_page(back: str) -> str:
+    """심사 동작 뒤 돌아갈 화면 — 두 심사 화면 가운데 하나만 허용.
+
+    Where to return after a review action; only the two review pages are allowed.
+    """
+    return back if back in ("/mcp-servers", "/agents") else "/agents"
+
+
 @router.post("/agents/refresh")
-def agents_refresh(request: Request) -> Response:
+def agents_refresh(request: Request, back: str = Form("/agents")) -> Response:
     """레지스트리의 APPROVED 레코드를 카탈로그로 복사(도구 이름 포함).
 
     Copy the registry's APPROVED records into the catalog (tool names included).
@@ -536,11 +563,11 @@ def agents_refresh(request: Request) -> Response:
     catalog = agentcore.approved_catalog()
     request.app.state.store.put_agents(catalog)
     request.app.state.store.audit("agents_refreshed", actor=session["email"], detail={"count": len(catalog)})
-    return RedirectResponse("/agents?msg=msg.agents_refreshed", status_code=302)
+    return RedirectResponse(f"{_back_page(back)}?msg=msg.agents_refreshed", status_code=302)
 
 
 @router.post("/agents/{name}/approve")
-def agents_approve(request: Request, name: str) -> Response:
+def agents_approve(request: Request, name: str, back: str = Form("/agents")) -> Response:
     """레지스트리 레코드 승인(curator) 후 카탈로그 갱신.
 
     Approve the registry record (curator) and refresh the catalog.
@@ -552,11 +579,11 @@ def agents_approve(request: Request, name: str) -> Response:
     agentcore.set_record_status(name, "APPROVED", f"approved in Governance Hub by {session['email']}")
     request.app.state.store.put_agents(agentcore.approved_catalog())
     request.app.state.store.audit("agent_approved", actor=session["email"], detail={"name": name})
-    return RedirectResponse("/agents?msg=msg.agents_refreshed", status_code=302)
+    return RedirectResponse(f"{_back_page(back)}?msg=msg.agents_refreshed", status_code=302)
 
 
 @router.post("/agents/{name}/reject")
-def agents_reject(request: Request, name: str, reason: str = Form("")) -> Response:
+def agents_reject(request: Request, name: str, reason: str = Form(""), back: str = Form("/agents")) -> Response:
     """레지스트리 레코드 반려.
 
     Reject the registry record.
@@ -568,7 +595,7 @@ def agents_reject(request: Request, name: str, reason: str = Form("")) -> Respon
     agentcore.set_record_status(name, "REJECTED", reason.strip() or f"rejected in Governance Hub by {session['email']}")
     request.app.state.store.put_agents(agentcore.approved_catalog())
     request.app.state.store.audit("agent_rejected", actor=session["email"], detail={"name": name, "reason": reason})
-    return RedirectResponse("/agents?msg=msg.agents_refreshed", status_code=302)
+    return RedirectResponse(f"{_back_page(back)}?msg=msg.agents_refreshed", status_code=302)
 
 
 @router.get("/help")
@@ -992,7 +1019,7 @@ def _pillar_of(path: str) -> str:
     """
     if path.startswith(("/teams", "/pending", "/org")):
         return "p1"
-    if path.startswith(("/agents", "/plugins")):
+    if path.startswith(("/agents", "/mcp-servers", "/plugins")):
         return "p2"
     return ""
 

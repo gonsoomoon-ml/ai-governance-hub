@@ -25,6 +25,7 @@ def test_every_page_opens_with_an_intro_line(client, settings, store):
         "/pending": "변경 사항",
         "/org": "안전망",
         "/plugins": "심사하는 곳",
+        "/mcp-servers": "레지스트리",
         "/agents": "레지스트리",
         "/audit": "누가 언제",
         "/help": "용어",

@@ -182,11 +182,11 @@ def test_help_page_uses_the_deck_glossary_and_links_the_deck(client, settings):
         assert phrase in page, phrase
 
 
-def test_agents_page_reviews_mcp_servers_and_agents_in_two_tables(client, settings, agentcore):
-    """심사 화면: 덱의 서비스형 두 항목대로 '사내 MCP 서버' 표(api-catalog) 다음에 '사내 에이전트' 표(dev-guide-qa).
+def test_registry_review_is_split_into_mcp_servers_and_agents_pages(client, settings, agentcore):
+    """심사 화면 둘: /mcp-servers 에는 MCP 레코드(api-catalog)만, /agents 에는 에이전트(dev-guide-qa)만. 메뉴도 둘.
 
-    Review page: the deck's two service-type items as two tables, in-house MCP servers (api-catalog) before
-    in-house agents (dev-guide-qa).
+    Two review pages: /mcp-servers lists MCP records only (api-catalog), /agents agents only (dev-guide-qa);
+    the menu has both.
     """
     agentcore.records = [
         {"name": "dev-guide-qa", "kind": "AGENT", "tools": ["ask"], "status": "PENDING_APPROVAL", "description": "Q&A"},
@@ -200,12 +200,10 @@ def test_agents_page_reviews_mcp_servers_and_agents_in_two_tables(client, settin
     ]
     login_as(client, settings)
 
-    page = client.get("/agents").text
+    mcp, agents = client.get("/mcp-servers").text, client.get("/agents").text
 
-    assert (
-        page.index("사내 MCP 서버</h2>")
-        < page.index("api-catalog")
-        < page.index("사내 에이전트</h2>")
-        < page.index("dev-guide-qa")
-    )
-    assert "플러그인 저장소 화면에서 심사" in page and "사내 MCP 서버&#39;·&#39;사내 에이전트&#39; 칸" in page
+    assert "api-catalog" in mcp and "dev-guide-qa" not in mcp and "<h1>사내 MCP 서버" in mcp
+    assert "dev-guide-qa" in agents and "api-catalog" not in agents and "<h1>사내 에이전트" in agents
+    assert 'href="/mcp-servers"' in agents and 'href="/agents"' in mcp
+    assert "플러그인 저장소 화면에서 심사" in agents and "사내 MCP 서버&#39;·&#39;사내 에이전트&#39; 칸" in agents
+    assert 'name="back" value="/mcp-servers"' in mcp
