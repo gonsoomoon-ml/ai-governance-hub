@@ -57,7 +57,7 @@ def test_mcp_agents_and_locks_are_shown_with_labels():
     )
     rows = rows_by_field(policy_diff(policy(), draft, t))
     assert rows["team.mcp_servers"][1] == "deepwiki https://mcp.deepwiki.com/mcp, wiki https://wiki.example.com/mcp"
-    assert rows["team.agents"] == ("dev-guide-qa, api-catalog", "api-catalog")
+    assert rows["diff.inhouse"] == ("dev-guide-qa, api-catalog", "api-catalog")
     assert rows["lock.plugin_sources"] == (
         t("lock.plugin_sources.company_only"),
         t("lock.plugin_sources.company_and_official"),

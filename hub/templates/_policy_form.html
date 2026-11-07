@@ -64,17 +64,21 @@
   <p class="muted">{{ t("team.catalog.empty.markets") }}{% if session and session.role == "admin" %} <a href="/org">{{ t("nav.org") }} ▸</a>{% endif %}</p>
   {% endif %}
 </fieldset>
+{# the deck's two service-type items, both reached through the one tool-gateway entry: in-house MCP servers, in-house agents #}
+{% for kind, legend, none_key, short_key, long_key in (("MCP", "team.mcp_inhouse", "team.mcp_inhouse.none", "help.mcp_inhouse.short", "help.mcp_inhouse"), ("AGENT", "team.agents", "team.agents.none", "help.agents.short", "help.agents")) %}
+{% set entries = catalog | selectattr("kind", "equalto", kind) | list %}
 <fieldset class="p2">
-  <legend>{{ t("team.agents") }}</legend>
-  {{ more(t("help.agents.short"), t("help.agents")) }}
-  {% if catalog %}
+  <legend>{{ t(legend) }}</legend>
+  {{ more(t(short_key), t(long_key)) }}
+  {% if entries %}
   <div class="choices">
-  {% for a in catalog %}
-  <label><input type="checkbox" name="agents" value="{{ a.name }}" {% if a.name in doc.agents %}checked{% endif %}> <strong>{{ a.name }}</strong> <span class="muted">{{ a.kind }} · {{ a.tools | join(", ") }}</span></label>
+  {% for a in entries %}
+  <label><input type="checkbox" name="agents" value="{{ a.name }}" {% if a.name in doc.agents %}checked{% endif %}> <strong>{{ a.name }}</strong>{% if a.description %} <span class="muted">{{ a.description }}</span>{% endif %}<br><span class="tech">{{ a.tools | join(", ") }}</span></label>
   {% endfor %}
   </div>
-  {% else %}<span class="muted">{{ t("team.agents.none") }}</span>{% endif %}
+  {% else %}<span class="muted">{{ t(none_key) }}</span>{% endif %}
 </fieldset>
+{% endfor %}
 <fieldset class="p1">
   <legend>{{ t("team.locks") }}</legend>
   {{ more(t("help.locks.short"), t("help.locks")) }}

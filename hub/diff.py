@@ -41,7 +41,7 @@ def _pairs(a: dict, b: dict, t: T):
         yield f"team.marketplace.{part}", _market(a, part), _market(b, part)
     yield "team.plugins", _joined(a.get("plugins")), _joined(b.get("plugins"))
     yield "team.mcp_servers", _mcp(a), _mcp(b)
-    yield "team.agents", _joined(a.get("agents")), _joined(b.get("agents"))
+    yield "diff.inhouse", _joined(a.get("agents")), _joined(b.get("agents"))
     for key in LOCK_CHOICES:
         yield f"lock.{key}", _lock(a, key, t), _lock(b, key, t)
 

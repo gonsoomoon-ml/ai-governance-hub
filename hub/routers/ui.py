@@ -46,7 +46,7 @@ from hub.gateway_api import GatewayApiError
 from hub.i18n import LANG_COOKIE, THEME_COOKIE, lang_of, theme_of, translator
 from hub.marketplace import MarketplaceError, fetch_manifest
 from hub.store import _now
-from hub.summary import receives_summary, step_of, todo_key
+from hub.summary import inhouse_counts, receives_summary, step_of, todo_key
 from hub.timefmt import fmt_ts
 
 router = APIRouter()
@@ -762,7 +762,7 @@ def _render_editor(
     changes = policy_diff((published or {}).get("doc"), draft["doc"], t) if draft else []
     preview_basis = "draft" if draft else ("published" if published else "empty")
     step = step_of(draft, published)
-    receives = receives_summary(published["doc"], t) if published else ""
+    receives = receives_summary(published["doc"], store.list_agents(), t) if published else ""
     preview = _preview_context(request, doc, f"/teams/{team_id}/preview.json")
     return _render(
         request,
@@ -809,7 +809,7 @@ def _render_org(
         session=session,
         org=org,
         doc=doc,
-        default_summary=_default_policy_summary(_t(request), doc),
+        default_summary=_default_policy_summary(_t(request), doc, store.list_agents()),
         receiving=_teams_receiving_default(request),
         markets=store.list_marketplaces(),
         **_preview_context(request, doc, "/org/preview.json"),
@@ -821,12 +821,13 @@ def _render_org(
     )
 
 
-def _default_policy_summary(t, doc: dict) -> str:
-    """안전망 절의 요약 한 줄 — 비어 있으면 '잠금만 내려갑니다', 아니면 플러그인·에이전트 개수.
+def _default_policy_summary(t, doc: dict, catalog: list[dict]) -> str:
+    """안전망 절의 요약 한 줄 — 비어 있으면 '잠금만 내려갑니다', 아니면 플러그인·사내 MCP 서버·에이전트 개수.
 
-    One-line summary of the safety net: 'only the locks go out' when empty, else plugin/agent counts.
+    One-line summary of the safety net: 'only the locks go out' when empty, else plugin / in-house MCP / agent counts.
     """
-    counts = {"plugins": len(doc.get("plugins") or []), "agents": len(doc.get("agents") or [])}
+    mcp, agents = inhouse_counts(doc, catalog)
+    counts = {"plugins": len(doc.get("plugins") or []), "mcp": mcp, "agents": agents}
     if not doc.get("marketplace") and not any(counts.values()):
         return t("org.default_policy.empty")
     return t("org.default_policy.set").format(**counts)

@@ -9,17 +9,32 @@ from collections.abc import Callable
 T = Callable[[str], str]
 
 
-def receives_summary(doc: dict, t: T) -> str:
-    """발행본 문서 -> '모델 n · 플러그인 n · 에이전트 n' (모델 제한 없음이면 '전체').
+def receives_summary(doc: dict, catalog: list[dict], t: T) -> str:
+    """발행본 문서 -> '모델 n · 플러그인 n · 사내 MCP 서버 n · 사내 에이전트 n' (모델 제한 없음이면 '전체').
+    사내 MCP 서버와 에이전트는 카탈로그의 종류(kind MCP | AGENT)로 센다.
 
-    Published document -> 'models n · plugins n · agents n' ('all' when unrestricted).
+    Published document -> 'models n · plugins n · in-house MCP servers n · in-house agents n' ('all' when
+    unrestricted). In-house MCP servers and agents are counted by the catalog kind (MCP | AGENT).
     """
     models = doc.get("models")
+    mcp, agents = inhouse_counts(doc, catalog)
     return t("team.receives.summary").format(
         models=t("team.receives.models.all") if models is None else len(models),
         plugins=len(doc.get("plugins") or []),
-        agents=len(doc.get("agents") or []),
+        mcp=mcp,
+        agents=agents,
     )
+
+
+def inhouse_counts(doc: dict, catalog: list[dict]) -> tuple[int, int]:
+    """허용한 사내 항목을 (MCP 서버 수, 에이전트 수) 로 — 카탈로그에 없는 이름은 에이전트로 센다.
+
+    Allowed in-house entries as (MCP servers, agents); names missing from the catalog count as agents.
+    """
+    kinds = {a["name"]: a.get("kind") for a in catalog}
+    allowed = doc.get("agents") or []
+    mcp = sum(1 for name in allowed if kinds.get(name) == "MCP")
+    return mcp, len(allowed) - mcp
 
 
 def todo_key(role: str, draft: dict | None, published: dict | None) -> str:

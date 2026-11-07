@@ -154,7 +154,9 @@ def test_editor_fields_are_pick_lists_from_the_org_catalogs(client, settings, st
     assert 'name="marketplace"' in page and "example-extensions — example/claude-extensions @ demo-2026-11" in page
     assert 'name="plugins" value="deck-design"' in page and 'name="mcp_servers"' not in page
     assert 'placeholder="owner/repo"' not in page and "marketplace_repo" not in page
-    assert page.count('<details class="more">') == 4 and "자세히" in page
+    assert page.count('<details class="more">') == 5 and "자세히" in page
+    assert "허용하는 사내 MCP 서버" in page and "허용하는 사내 에이전트" in page
+    assert page.index("허용하는 사내 MCP 서버") < page.index("허용하는 사내 에이전트")
     assert "tool-gateway" in page
     assert "models_unrestricted" in page and "disabled" in page
 
@@ -180,7 +182,7 @@ def test_org_page_folds_the_safety_net_and_summarizes_it(client, settings, store
         "/org", data={**org_form, **{k: v for k, v in FORM.items() if k != "models"}, "models_unrestricted": "on"}
     )
     page = client.get("/org").text
-    assert "설정됨(플러그인 2 · 에이전트 2)" in page
+    assert "설정됨(플러그인 2 · 사내 MCP 서버 1 · 사내 에이전트 1)" in page
 
     bad = client.post("/org", data={**org_form, "marketplace": "ghost-market", "models_unrestricted": "on"})
     assert bad.status_code == 400 and '<details class="card fold" open>' in bad.text
