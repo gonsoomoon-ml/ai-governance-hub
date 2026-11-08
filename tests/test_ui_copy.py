@@ -178,7 +178,7 @@ def test_help_explains_the_two_publish_paths(client, settings, store):
 
     page = client.get("/help").text
 
-    assert "배포의 두 길" in page and "(1) 리더 길" in page and "(2) 관리자 길" in page
+    assert "배포 경로 둘" in page and "(1) 승인 경로" in page and "(2) 직접 배포 경로" in page
     assert "저장 · 승인 요청 · 배포 · 승인" in page and "저장 · 배포" in page
     assert "승인권은 관리자에게만" in page and "승인 없이 바로 배포할 수도" in page
     assert "배포를 되돌리려면?" in page and "배포을" not in page

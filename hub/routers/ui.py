@@ -188,6 +188,9 @@ async def save_draft(request: Request, team_id: str) -> Response:
     doc, errors = _team_doc_from_form(form, store)
     if errors:
         return _render_editor(request, session, team_id, errors=errors, doc=doc, status_code=400)
+    if action in ("submit", "publish") and _same_as_published(store, team_id, doc):
+        key = "msg.no_change.submit" if action == "submit" else "msg.no_change"
+        return RedirectResponse(f"/teams/{team_id}?msg={key}", status_code=302)
     seen = _gateway_models(request, team_id)  # one-writer snapshot: the gateway value this save was made against
     store.put_draft(team_id, doc, status="draft", edited_by=session["email"], gateway_models=seen)
     store.audit("save", actor=session["email"], team_id=team_id)
@@ -215,6 +218,8 @@ def submit_draft(request: Request, team_id: str) -> Response:
     draft = store.get_policy(team_id, "DRAFT")
     if not draft:
         raise HTTPException(status_code=400, detail="nothing to submit: save a draft first")
+    if _same_as_published(store, team_id, draft["doc"]):
+        return RedirectResponse(f"/teams/{team_id}?msg=msg.no_change.submit", status_code=302)
     store.put_draft(team_id, draft["doc"], status="pending", submitted_by=session["email"], edited_by=session["email"])
     store.audit("submit", actor=session["email"], team_id=team_id)
     return RedirectResponse(f"/teams/{team_id}?msg=msg.submitted", status_code=302)
@@ -291,6 +296,8 @@ def publish_draft(request: Request, team_id: str) -> Response:
     draft = request.app.state.store.get_policy(team_id, "DRAFT")
     if not draft:
         raise HTTPException(status_code=400, detail="nothing to publish: save a draft first")
+    if _same_as_published(request.app.state.store, team_id, draft["doc"]):
+        return RedirectResponse(f"/teams/{team_id}?msg=msg.no_change", status_code=302)
     try:
         _publish(request, session, team_id, draft["doc"], seen=draft.get("gateway_models"))
     except PublishStopped as stop:
@@ -826,6 +833,31 @@ def _gateway_models(request: Request, team_id: str) -> list[str] | None:
         return request.app.state.gateway.get_allowed_models(team_id)
     except GatewayApiError:
         return None
+
+
+def _canonical(doc: dict) -> dict:
+    """비교용 정책 문서: 목록은 정렬, 빈 값은 한 모양으로(None 모델 = 제한 없음은 그대로).
+
+    A policy document normalized for comparison: lists sorted, empty values in one shape (None models = unrestricted stays).
+    """
+    models = doc.get("models")
+    return {
+        "models": sorted(models) if models is not None else None,
+        "marketplace": doc.get("marketplace") or None,
+        "plugins": sorted(doc.get("plugins") or []),
+        "agents": sorted(doc.get("agents") or []),
+        "mcp_servers": doc.get("mcp_servers") or {},
+        "locks": doc.get("locks") or {},
+    }
+
+
+def _same_as_published(store: Any, team_id: str, doc: dict) -> bool:
+    """배포본이 있고 문서가 그것과 같은가 — 같으면 배포·승인 요청은 새 버전을 만들지 않는다(0.1.29).
+
+    Is there a published copy equal to this document? If so, publish and approval requests make no new version (0.1.29).
+    """
+    published = store.get_policy(team_id, "PUBLISHED")
+    return bool(published) and _canonical(published.get("doc") or {}) == _canonical(doc)
 
 
 def _norm_models(models: list[str] | None) -> tuple[str, ...]:

@@ -185,3 +185,33 @@ def test_admin_editor_offers_publish_and_save_but_no_approval_request(client, se
 
     assert 'name="action" value="publish"' in page and 'name="action" value="save"' in page
     assert 'name="action" value="submit"' not in page and "바로 배포하지 않으려면" in page
+
+
+def test_publishing_or_requesting_an_unchanged_policy_makes_no_new_version(client, settings, store):
+    """배포본과 같은 내용이면 '저장 후 바로 배포'·'저장 후 승인 요청'·/publish·/submit 모두 새 버전·요청 없이 안내만(0.1.29).
+
+    When the content equals the published copy, publish-now, request-approval, /publish and /submit make no new
+    version or request and only show a notice (0.1.29).
+    """
+    managed(store)
+    login_as(client, settings)
+    assert client.post(SAVE, data={**FORM, "action": "publish"}).status_code == 302
+    assert store.get_policy(TEAM, "PUBLISHED")["version"] == 1
+
+    again = client.post(SAVE, data={**FORM, "action": "publish"})
+    assert again.status_code == 302 and again.headers["location"] == f"/teams/{TEAM}?msg=msg.no_change"
+    request = client.post(SAVE, data={**FORM, "action": "submit"})
+    assert request.headers["location"] == f"/teams/{TEAM}?msg=msg.no_change.submit"
+    assert client.post(f"/teams/{TEAM}/publish").headers["location"] == f"/teams/{TEAM}?msg=msg.no_change"
+    assert client.post(f"/teams/{TEAM}/submit").headers["location"] == f"/teams/{TEAM}?msg=msg.no_change.submit"
+
+    assert store.get_policy(TEAM, "PUBLISHED")["version"] == 1
+    assert store.get_policy(TEAM, "DRAFT")["status"] == "published"  # the draft was not reopened
+    assert [e["action"] for e in store.list_audit()].count("publish") == 1
+    assert "새 버전을 만들지 않았습니다" in client.get(f"/teams/{TEAM}?msg=msg.no_change").text
+
+    changed = client.post(
+        SAVE, data={**FORM, "plugins": "deck-design", "action": "publish"}
+    )  # a real change still publishes
+    assert changed.headers["location"] == f"/teams/{TEAM}?msg=msg.published"
+    assert store.get_policy(TEAM, "PUBLISHED")["version"] == 2
