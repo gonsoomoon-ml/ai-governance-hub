@@ -54,7 +54,7 @@
       {% elif not pending %}
       <button class="secondary" name="action" value="save" form="policy-form" data-busy="{{ t('busy') }}">{{ t("team.save") }}</button>
       {% endif %}
-      {% with preview_title=t("preview.title.team") ~ " " ~ t("team.preview.basis." + preview_basis) %}{% include "_preview.html" %}{% endwith %}
+      {% with preview_title=t("preview.title.team") ~ " " ~ t("team.preview.basis." + preview_basis), preview_live_title=t("preview.title.team") ~ " " ~ t("preview.basis.form"), preview_form="policy-form", preview_post="/teams/" ~ team.team_id ~ "/preview" %}{% include "_preview.html" %}{% endwith %}
     </div>
     {% if published %}<p class="receives"><strong>{{ t("team.receives") }}:</strong> {{ receives }}</p>{% endif %}
   </div>

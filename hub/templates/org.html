@@ -30,7 +30,7 @@
       {% if receiving %}{{ receiving | join(" · ") }}{% else %}<span class="muted">{{ t("org.receiving.none") }}</span>{% endif %}</p>
     {% endif %}
     {% with with_models=false, on_org=true %}{% include "_policy_form.html" %}{% endwith %}
-    <div style="margin-top:8px">{% with preview_title=t("preview.title.org") %}{% include "_preview.html" %}{% endwith %}</div>
+    <div style="margin-top:8px">{% with preview_title=t("preview.title.org") ~ " " ~ t("preview.basis.saved"), preview_live_title=t("preview.title.org") ~ " " ~ t("preview.basis.form"), preview_form="org-form", preview_post="/org/preview" %}{% include "_preview.html" %}{% endwith %}</div>
     <div class="actions"><button class="primary">{{ t("org.save") }}</button></div>
   </details>
 </form>

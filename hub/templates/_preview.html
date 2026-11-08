@@ -1,11 +1,14 @@
-{# preview modal: trigger button + <dialog> with the fragment JSON; `preview_title` set by the including page #}
-<button type="button" id="preview-open" class="secondary" onclick="document.getElementById('preview').showModal()">{{ t("team.preview") }}</button>
+{# preview modal: trigger button + <dialog> with the fragment JSON; `preview_title` set by the including page.
+   The button posts the form as typed (`preview_form`, `preview_post`) and shows that fragment under `preview_live_title`;
+   the server-rendered JSON of the saved copy stays as the fallback when the request fails. #}
+<button type="button" id="preview-open" class="secondary" data-form="{{ preview_form }}" data-post="{{ preview_post }}" data-live-title="{{ preview_live_title }}" onclick="hubPreview(this)">{{ t("team.preview") }}</button>
 <dialog id="preview" aria-labelledby="preview-title" style="max-width:760px;width:92vw;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);color:var(--ink);padding:0">
   <div style="padding:16px 18px 6px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
     <h2 id="preview-title" style="margin:0">{{ preview_title }}</h2>
-    <span class="tech" title="{{ preview_version }}">{{ preview_version[:8] }}</span>
+    <span class="tech" id="preview-version" title="{{ preview_version }}">{{ preview_version[:8] }}</span>
   </div>
   <p class="hint" style="padding:0 18px">{{ t("preview.desc") }}</p>
+  <div id="preview-errors" class="err" style="margin:0 18px" hidden><strong>{{ t("preview.errors") }}</strong><ul></ul></div>
   <pre id="preview-json" style="margin:0 18px;max-height:60vh">{{ preview_json }}</pre>
   <div class="actions" style="padding:12px 18px 16px">
     <button type="button" id="preview-copy" class="secondary" data-copied="{{ t('preview.copied') }}" onclick="(function(b){navigator.clipboard.writeText(document.getElementById('preview-json').textContent).then(function(){var o=b.textContent;b.textContent=b.dataset.copied;setTimeout(function(){b.textContent=o;},1500);});})(this)">{{ t("preview.copy") }}</button>
@@ -15,6 +18,30 @@
   </div>
 </dialog>
 <script>
+  function hubPreview(btn) {
+    var d = document.getElementById("preview"), form = document.getElementById(btn.dataset.form);
+    var pre = document.getElementById("preview-json"), errs = document.getElementById("preview-errors");
+    var ver = document.getElementById("preview-version"), title = document.getElementById("preview-title");
+    var show = function () { if (!d.open) d.showModal(); };
+    if (!d.dataset.saved) { d.dataset.saved = JSON.stringify({ t: title.textContent, v: ver.textContent, vt: ver.title, j: pre.textContent }); }
+    var restore = function () { var s = JSON.parse(d.dataset.saved); title.textContent = s.t; ver.textContent = s.v; ver.title = s.vt; pre.textContent = s.j; pre.hidden = false; errs.hidden = true; };
+    if (!form || !btn.dataset.post || !window.fetch) { show(); return; }
+    fetch(btn.dataset.post, { method: "POST", body: new URLSearchParams(new FormData(form)), headers: { "Accept": "application/json" }, credentials: "same-origin" })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+      .then(function (res) {
+        if (res.ok && res.body.managedSettings) {
+          pre.textContent = JSON.stringify(res.body.managedSettings, null, 2); pre.hidden = false; errs.hidden = true;
+          ver.textContent = (res.body.version || "").slice(0, 8); ver.title = res.body.version || "";
+          title.textContent = btn.dataset.liveTitle;
+        } else if (res.body && res.body.errors) {
+          var ul = errs.querySelector("ul"); ul.innerHTML = "";
+          res.body.errors.forEach(function (e) { var li = document.createElement("li"); li.textContent = e; ul.appendChild(li); });
+          errs.hidden = false; pre.hidden = true; title.textContent = btn.dataset.liveTitle;
+        }
+        show();
+      })
+      .catch(function () { restore(); show(); });  /* request failed: back to the saved-copy preview rendered by the server */
+  }
   (function () { var d = document.getElementById("preview"); if (!d) return;
     d.addEventListener("click", function (e) { if (e.target === d) d.close(); });  // click outside closes
   })();

@@ -185,8 +185,7 @@ async def save_draft(request: Request, team_id: str) -> Response:
     action = form.get("action") or "save"
     if action == "publish":
         require_admin(request)
-    doc, errors = policy_from_form(form, _catalogs(store))
-    errors += validate_policy(doc, store.org_settings())
+    doc, errors = _team_doc_from_form(form, store)
     if errors:
         return _render_editor(request, session, team_id, errors=errors, doc=doc, status_code=400)
     seen = _gateway_models(request, team_id)  # one-writer snapshot: the gateway value this save was made against
@@ -295,6 +294,20 @@ def preview(request: Request, team_id: str) -> Response:
     return JSONResponse({"version": version_of(fragment), "managedSettings": fragment})
 
 
+@router.post("/teams/{team_id}/preview")
+async def preview_form(request: Request, team_id: str) -> Response:
+    """저장하지 않은 폼 그대로의 조각(미리보기 단추). 검증 오류면 400 + errors, 아무것도 저장하지 않는다.
+
+    The fragment of the form as typed, unsaved (preview button). 400 + errors on validation failure; nothing is saved.
+    """
+    require_team_access(request, team_id)
+    doc, errors = _team_doc_from_form(await request.form(), request.app.state.store)
+    if errors:
+        return JSONResponse({"errors": errors}, status_code=400)
+    fragment = _fragment(request, doc)
+    return JSONResponse({"version": version_of(fragment), "managedSettings": fragment})
+
+
 @router.get("/org/preview.json")
 def org_preview(request: Request) -> Response:
     """조직 기본 정책(안전망)의 조각과 버전 — 허브가 관리하지 않는 팀의 PC 가 받는 것.
@@ -303,6 +316,20 @@ def org_preview(request: Request) -> Response:
     """
     require_admin(request)
     fragment = _fragment(request, request.app.state.store.org_settings()["default_policy"])
+    return JSONResponse({"version": version_of(fragment), "managedSettings": fragment})
+
+
+@router.post("/org/preview")
+async def org_preview_form(request: Request) -> Response:
+    """저장하지 않은 조직 설정 폼(고정 항목 + 안전망) 그대로의 조각. 검증 오류면 400 + errors.
+
+    The fragment of the organization form as typed (fixed locks + safety net), unsaved. 400 + errors on failure.
+    """
+    require_admin(request)
+    org, errors = _org_from_form(await request.form(), request.app.state.store)
+    if errors:
+        return JSONResponse({"errors": errors}, status_code=400)
+    fragment = _fragment(request, org["default_policy"], org=org)
     return JSONResponse({"version": version_of(fragment), "managedSettings": fragment})
 
 
@@ -340,21 +367,11 @@ async def org_save(request: Request) -> Response:
     """
     session = require_admin(request)
     store = request.app.state.store
-    form = await request.form()
-    fixed = {key: (form.get(f"fixed_{key}") or None) for key in LOCK_CHOICES}
-    doc, catalog_errors = policy_from_form(form, _catalogs(store))
-    doc["models"] = None  # the default policy never restricts models; admin-api is per team
-    org = {"locks_fixed": fixed, "default_policy": doc}
-    errors = [
-        f"fixed_{k}: must be one of {', '.join(LOCK_CHOICES[k])}"
-        for k, v in fixed.items()
-        if v and v not in LOCK_CHOICES[k]
-    ]
-    errors += catalog_errors + validate_policy(doc, {"locks_fixed": {}})
+    org, errors = _org_from_form(await request.form(), store)
     if errors:
         return _render_org(request, session, errors=errors, org=org, status_code=400)
     store.put_org_settings(org)
-    store.audit("org_saved", actor=session["email"], detail={"locks_fixed": fixed})
+    store.audit("org_saved", actor=session["email"], detail={"locks_fixed": org["locks_fixed"]})
     return RedirectResponse("/org?msg=msg.org_saved", status_code=302)
 
 
@@ -606,6 +623,32 @@ def audit_page(request: Request) -> Response:
 # --- helpers ---
 
 
+def _team_doc_from_form(form: Any, store: Any) -> tuple[dict, list[str]]:
+    """팀 폼 -> 문서 + 오류(카탈로그 + 검증, 조직 고정 포함). 저장과 미리보기가 같은 길을 쓴다.
+
+    Team form -> document + errors (catalog + validation incl. org-fixed locks). Save and preview share this path.
+    """
+    doc, errors = policy_from_form(form, _catalogs(store))
+    return doc, errors + validate_policy(doc, store.org_settings())
+
+
+def _org_from_form(form: Any, store: Any) -> tuple[dict, list[str]]:
+    """조직 설정 폼 -> {locks_fixed, default_policy} + 오류. 기본 정책은 모델을 제한하지 않는다(admin-api 는 팀 단위).
+
+    Organization form -> {locks_fixed, default_policy} + errors. The default policy never restricts models (admin-api is per team).
+    """
+    fixed = {key: (form.get(f"fixed_{key}") or None) for key in LOCK_CHOICES}
+    doc, catalog_errors = policy_from_form(form, _catalogs(store))
+    doc["models"] = None
+    errors = [
+        f"fixed_{k}: must be one of {', '.join(LOCK_CHOICES[k])}"
+        for k, v in fixed.items()
+        if v and v not in LOCK_CHOICES[k]
+    ]
+    errors += catalog_errors + validate_policy(doc, {"locks_fixed": {}})
+    return {"locks_fixed": fixed, "default_policy": doc}, errors
+
+
 def policy_from_form(form: Any, catalogs: dict) -> tuple[dict, list[str]]:
     """HTML 폼 -> 정책 문서 + 카탈로그 오류. 모델은 체크박스 목록 또는 "제한 없음"(None).
     저장소·플러그인은 조직 카탈로그에서 고른 이름이고, 문서에는 카탈로그의 repo·ref 를 복사해 넣는다
@@ -796,16 +839,16 @@ def _preview_context(request: Request, doc: dict, href: str) -> dict:
     }
 
 
-def _fragment(request: Request, doc: dict) -> dict:
-    """설정값·카탈로그를 붙여 조각을 만든다.
+def _fragment(request: Request, doc: dict, org: dict | None = None) -> dict:
+    """설정값·카탈로그를 붙여 조각을 만든다. org 를 주면(저장 전 조직 폼) 저장된 조직 설정 대신 쓴다.
 
-    Build the fragment with the deployment's settings and catalog.
+    Build the fragment with the deployment's settings and catalog; `org` (an unsaved organization form) replaces the stored org settings.
     """
     settings = request.app.state.settings
     store = request.app.state.store
     return build_fragment(
         doc,
-        store.org_settings(),
+        org if org is not None else store.org_settings(),
         store.list_agents(),
         gateway_url=settings.agentcore_gateway_url,
         oauth=settings.oauth(),
