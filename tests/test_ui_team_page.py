@@ -90,6 +90,9 @@ def test_pending_draft_is_read_only_with_a_withdraw_button(client, settings, sto
     assert f'action="/teams/{TEAM}/withdraw"' in page and "승인 요청 취소" in page
     assert 'name="action" value="submit"' not in page and 'name="action" value="save"' not in page
     assert 'data-post=""' in page  # the preview button posts nothing: the saved draft is what is shown
+    login_as(client, settings)
+    admin_page = client.get(f"/teams/{TEAM}").text
+    assert "/withdraw" not in admin_page and "승인·배포" in admin_page  # the administrator approves or rejects only
 
 
 def test_withdraw_reopens_the_pending_draft_without_changing_it(client, settings, store):

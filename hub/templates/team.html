@@ -48,13 +48,10 @@
       {% endif %}
     </div>
     <div class="actions minor">
-      {% if session.role == "admin" and pending %}
-      <form method="post" action="/teams/{{ team.team_id }}/withdraw"><button class="secondary" title="{{ t('tip.withdraw') }}">{{ t("team.withdraw") }}</button></form>
-      {% elif session.role == "admin" %}
+      {# while pending the administrator only approves or rejects; withdrawing is the leader's move #}
+      {% if not pending %}
       <button class="secondary" name="action" value="save" form="policy-form" data-busy="{{ t('busy') }}">{{ t("team.save") }}</button>
-      <button class="secondary" name="action" value="submit" form="policy-form" title="{{ t('tip.submit') }}" data-busy="{{ t('busy') }}">{{ t("team.save_submit") }}</button>
-      {% elif not pending %}
-      <button class="secondary" name="action" value="save" form="policy-form" data-busy="{{ t('busy') }}">{{ t("team.save") }}</button>
+      {% if session.role == "admin" %}<button class="secondary" name="action" value="submit" form="policy-form" title="{{ t('tip.submit') }}" data-busy="{{ t('busy') }}">{{ t("team.save_submit") }}</button>{% endif %}
       {% endif %}
       {% with preview_title=t("preview.title.team") ~ " " ~ t("team.preview.basis." + preview_basis), preview_live_title=t("preview.title.team") ~ " " ~ t("preview.basis.form"), preview_form="policy-form", preview_post=("" if pending else "/teams/" ~ team.team_id ~ "/preview") %}{% include "_preview.html" %}{% endwith %}
     </div>
