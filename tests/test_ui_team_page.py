@@ -171,3 +171,17 @@ def test_status_card_labels_preview_basis_and_current_version(client, settings, 
     client.post(SAVE, data={**FORM, "plugins": "concise-response\n"})
     page = client.get(f"/teams/{TEAM}").text
     assert "(초안 기준)" in page and "현재" in page
+
+
+def test_admin_editor_offers_publish_and_save_but_no_approval_request(client, settings, store):
+    """관리자 편집 화면: '저장 후 바로 배포'·'초안 저장' 만, '저장 후 승인 요청' 없음(승인 요청은 리더의 일, 0.1.27).
+
+    Admin editor: 'save and publish now' and 'save draft' only; no 'request approval' (that is the leader's move, 0.1.27).
+    """
+    managed(store)
+    login_as(client, settings)
+
+    page = client.get(f"/teams/{TEAM}").text
+
+    assert 'name="action" value="publish"' in page and 'name="action" value="save"' in page
+    assert 'name="action" value="submit"' not in page and "바로 배포하지 않으려면" in page
