@@ -93,6 +93,9 @@ def test_pending_draft_is_read_only_with_a_withdraw_button(client, settings, sto
     login_as(client, settings)
     admin_page = client.get(f"/teams/{TEAM}").text
     assert "/withdraw" not in admin_page and "승인·배포" in admin_page  # the administrator approves or rejects only
+    assert (
+        "승인 요청 취소」를 누르세요" not in admin_page and "승인·배포하거나 반려하세요" in admin_page
+    )  # role-specific band
 
 
 def test_withdraw_reopens_the_pending_draft_without_changing_it(client, settings, store):

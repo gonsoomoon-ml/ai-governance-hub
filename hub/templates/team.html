@@ -15,7 +15,7 @@
 
 <div class="layout">
 <div class="main">
-  {% if pending %}<div class="warn">{{ t("team.pending_warning") }}</div>{% endif %}
+  {% if pending %}<div class="warn">{{ t("team.pending_warning.admin" if session.role == "admin" else "team.pending_warning") }}</div>{% endif %}
   <form method="post" action="/teams/{{ team.team_id }}/save" id="policy-form">
     {# while the request is pending the whole form is read-only: withdraw first, then edit #}
     <fieldset class="plain"{% if pending %} disabled{% endif %}>
