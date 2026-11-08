@@ -903,7 +903,18 @@ def _render_editor(
             known.add(alias)
             models.append({"alias": alias, "display_name": alias})
     t = _t(request)
-    gateway_models_differs = current is not None and _norm_models(current) != _norm_models(doc.get("models"))
+    # one-writer notice: the gateway's value now vs the value the hub last knew (the draft's save-time snapshot,
+    # the published copy) — the same rule _publish applies. A draft that *intends* to change the models is not drift.
+    known_models: list = []
+    if draft and isinstance(draft.get("gateway_models"), list):
+        known_models.append(draft["gateway_models"])
+    if published:
+        known_models.append((published.get("doc") or {}).get("models"))
+    gateway_models_differs = (
+        current is not None
+        and bool(known_models)
+        and _norm_models(current) not in {_norm_models(k) for k in known_models}
+    )
     org = store.org_settings()
     catalog = store.list_agents()
     current_doc = published["doc"] if published else org["default_policy"]  # what PCs receive now
@@ -931,6 +942,7 @@ def _render_editor(
         models_error=models_error,
         gateway_models_differs=gateway_models_differs,
         gateway_models_label=_models_label(current, t),
+        hub_models_label=_models_label(known_models[0], t) if known_models else "",
         catalog=store.list_agents(),
         org=org,
         versions=store.list_versions(team_id),

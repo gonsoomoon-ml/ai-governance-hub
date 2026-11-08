@@ -170,3 +170,39 @@ def test_publish_is_refused_when_the_current_value_cannot_be_read(client, settin
 
     assert client.post(f"/teams/{TEAM}/publish").status_code == 502
     assert store.get_policy(TEAM, "PUBLISHED") is None
+
+
+def test_a_draft_that_changes_the_models_is_not_drift(client, settings, store, admin_api):
+    """초안이 모델을 바꾸려는 것은 어긋남이 아니다: 저장 뒤 게이트웨이 값이 그대로면 알림이 없다(0.1.25).
+
+    A draft that intends to change the models is not drift: no notice while the gateway value is unchanged since
+    the save (0.1.25).
+    """
+    managed(store)
+    login_as(client, settings)
+    client.post(f"/teams/{TEAM}/save", data=FORM)  # the gateway is unrestricted ([]) at save; the draft asks for two
+
+    assert "gateway-current" not in client.get(f"/teams/{TEAM}").text
+
+
+def test_the_notice_names_the_value_the_hub_last_saw(client, settings, store, admin_api):
+    managed(store)
+    admin_api.allowed[TEAM] = [OPUS]
+    login_as(client, settings)
+    client.post(f"/teams/{TEAM}/save", data=FORM)
+    admin_api.allowed[TEAM] = [OPUS, HAIKU]
+
+    page = client.get(f"/teams/{TEAM}").text
+
+    assert "gateway-current" in page and f"허브가 마지막으로 본 값({OPUS})과 다릅니다" in page
+
+
+def test_drift_from_the_published_copy_is_noticed_too(client, settings, store, admin_api):
+    managed(store)
+    login_as(client, settings)
+    client.post(f"/teams/{TEAM}/save", data=FORM)
+    assert client.post(f"/teams/{TEAM}/publish").status_code == 302
+    assert "gateway-current" not in client.get(f"/teams/{TEAM}").text  # gateway == published copy
+    admin_api.allowed[TEAM] = [OPUS]  # another hand changes it in admin-ui
+
+    assert "gateway-current" in client.get(f"/teams/{TEAM}").text

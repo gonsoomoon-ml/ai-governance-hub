@@ -37,7 +37,7 @@
   <legend>{{ t("team.models") }}</legend>
   {{ more(t("help.models.short"), t("help.models")) }}
   {% if models_error %}<div class="err">{{ t("team.models.error") }}: {{ models_error }}</div>{% endif %}
-  {% if gateway_models_differs %}<div class="warn gateway-current"><strong>{{ t("team.models.current") }}</strong>: {{ gateway_models_label }} — {{ t("team.models.current.differs") }}</div>{% endif %}
+  {% if gateway_models_differs %}<div class="warn gateway-current"><strong>{{ t("team.models.current") }}</strong>: {{ gateway_models_label }} — {{ t("team.models.current.differs").format(hub=hub_models_label) }}</div>{% endif %}
   <label><input type="checkbox" name="models_unrestricted" id="models_unrestricted" {% if doc.models is none %}checked{% endif %}> {{ t("team.models.unrestricted") }}</label>
   <div id="model_choices" class="choices">
   {% for m in models %}
