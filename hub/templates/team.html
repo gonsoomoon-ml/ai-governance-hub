@@ -17,7 +17,10 @@
 <div class="main">
   {% if pending %}<div class="warn">{{ t("team.pending_warning") }}</div>{% endif %}
   <form method="post" action="/teams/{{ team.team_id }}/save" id="policy-form">
+    {# while the request is pending the whole form is read-only: withdraw first, then edit #}
+    <fieldset class="plain"{% if pending %} disabled{% endif %}>
     {% with with_models=true %}{% include "_policy_form.html" %}{% endwith %}
+    </fieldset>
   </form>
 </div>
 
@@ -39,22 +42,21 @@
       {% elif session.role == "admin" %}
       <button class="primary" name="action" value="publish" form="policy-form" title="{{ t('tip.publish') }}" data-busy="{{ t('busy') }}">{{ t("team.save_publish") }}</button>
       {% elif pending %}
-      <button class="primary" name="action" value="save" form="policy-form" data-busy="{{ t('busy') }}">{{ t("team.save_cancel") }}</button>
+      <form method="post" action="/teams/{{ team.team_id }}/withdraw"><button class="secondary" title="{{ t('tip.withdraw') }}">{{ t("team.withdraw") }}</button></form>
       {% else %}
       <button class="primary" name="action" value="submit" form="policy-form" title="{{ t('tip.submit') }}" data-busy="{{ t('busy') }}">{{ t("team.save_submit") }}</button>
       {% endif %}
     </div>
     <div class="actions minor">
       {% if session.role == "admin" and pending %}
-      <button class="secondary" name="action" value="save" form="policy-form" data-busy="{{ t('busy') }}">{{ t("team.save_cancel") }}</button>
-      <button class="secondary" name="action" value="publish" form="policy-form" title="{{ t('tip.publish') }}" data-busy="{{ t('busy') }}">{{ t("team.save_publish") }}</button>
+      <form method="post" action="/teams/{{ team.team_id }}/withdraw"><button class="secondary" title="{{ t('tip.withdraw') }}">{{ t("team.withdraw") }}</button></form>
       {% elif session.role == "admin" %}
       <button class="secondary" name="action" value="save" form="policy-form" data-busy="{{ t('busy') }}">{{ t("team.save") }}</button>
       <button class="secondary" name="action" value="submit" form="policy-form" title="{{ t('tip.submit') }}" data-busy="{{ t('busy') }}">{{ t("team.save_submit") }}</button>
       {% elif not pending %}
       <button class="secondary" name="action" value="save" form="policy-form" data-busy="{{ t('busy') }}">{{ t("team.save") }}</button>
       {% endif %}
-      {% with preview_title=t("preview.title.team") ~ " " ~ t("team.preview.basis." + preview_basis), preview_live_title=t("preview.title.team") ~ " " ~ t("preview.basis.form"), preview_form="policy-form", preview_post="/teams/" ~ team.team_id ~ "/preview" %}{% include "_preview.html" %}{% endwith %}
+      {% with preview_title=t("preview.title.team") ~ " " ~ t("team.preview.basis." + preview_basis), preview_live_title=t("preview.title.team") ~ " " ~ t("preview.basis.form"), preview_form="policy-form", preview_post=("" if pending else "/teams/" ~ team.team_id ~ "/preview") %}{% include "_preview.html" %}{% endwith %}
     </div>
     {% if published %}<p class="receives"><strong>{{ t("team.receives") }}:</strong> {{ receives }}</p>{% endif %}
   </div>

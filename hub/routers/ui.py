@@ -220,6 +220,24 @@ def submit_draft(request: Request, team_id: str) -> Response:
     return RedirectResponse(f"/teams/{team_id}?msg=msg.submitted", status_code=302)
 
 
+@router.post("/teams/{team_id}/withdraw")
+def withdraw_request(request: Request, team_id: str) -> Response:
+    """승인 요청 취소(리더·관리자): 승인 대기 초안의 내용은 그대로 두고 상태만 작성 중으로 되돌린다.
+    게이트웨이 스냅샷도 그대로(put_draft 의 KEEP). 대기 중이 아니면 409.
+
+    Withdraw the approval request (leader or admin): the pending draft keeps its content and goes back to
+    'draft'; the gateway snapshot is kept too (put_draft KEEP). 409 when nothing is pending.
+    """
+    session = require_team_access(request, team_id)
+    store = request.app.state.store
+    draft = store.get_policy(team_id, "DRAFT")
+    if not draft or draft.get("status") != "pending":
+        raise HTTPException(status_code=409, detail="no pending request to withdraw")
+    store.put_draft(team_id, draft["doc"], status="draft", edited_by=session["email"])
+    store.audit("withdraw", actor=session["email"], team_id=team_id)
+    return RedirectResponse(f"/teams/{team_id}?msg=msg.withdrawn", status_code=302)
+
+
 @router.post("/teams/{team_id}/approve")
 def approve_draft(request: Request, team_id: str) -> Response:
     """승인 = 발행(관리자). 승인 대기 상태여야 한다.

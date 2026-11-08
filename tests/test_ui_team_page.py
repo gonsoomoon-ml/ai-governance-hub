@@ -73,10 +73,11 @@ def test_leader_cannot_use_action_publish(client, settings, store):
     assert store.get_policy(TEAM, "PUBLISHED") is None
 
 
-def test_pending_draft_shows_a_warning_and_relabels_save(client, settings, store):
-    """승인 대기 중엔 경고 띠와 '저장(승인 요청 취소)' 단추, '저장 후 승인 요청' 은 숨김.
+def test_pending_draft_is_read_only_with_a_withdraw_button(client, settings, store):
+    """승인 대기 중엔 경고 띠, 폼은 읽기 전용(fieldset disabled), 단추는 '승인 요청 취소' 뿐, 미리보기는 저장본으로(0.1.24).
 
-    While pending: a warning band, the save button relabeled as cancelling the request, no submit button.
+    While pending: a warning band, the form read-only (disabled fieldset), only the withdraw button, and the
+    preview falls back to the saved draft (0.1.24).
     """
     managed(store)
     login_as(client, settings, email=LEADER_EMAIL, role="leader", teams=[TEAM])
@@ -84,9 +85,36 @@ def test_pending_draft_shows_a_warning_and_relabels_save(client, settings, store
 
     page = client.get(f"/teams/{TEAM}").text
 
-    assert "저장하면 승인 요청이 취소되고" in page
-    assert "저장(승인 요청 취소)" in page
-    assert 'name="action" value="submit"' not in page  # the submit button is hidden while pending
+    assert "기다리는 동안은 수정할 수 없습니다" in page
+    assert '<fieldset class="plain" disabled>' in page
+    assert f'action="/teams/{TEAM}/withdraw"' in page and "승인 요청 취소" in page
+    assert 'name="action" value="submit"' not in page and 'name="action" value="save"' not in page
+    assert 'data-post=""' in page  # the preview button posts nothing: the saved draft is what is shown
+
+
+def test_withdraw_reopens_the_pending_draft_without_changing_it(client, settings, store):
+    """승인 요청 취소: 상태만 작성 중으로, 내용·게이트웨이 스냅샷 유지, 감사 'withdraw'(화면 '승인 요청 취소'); 대기 중이 아니면 409.
+
+    Withdraw: status back to draft, content and gateway snapshot kept, audit 'withdraw' (shown as such); 409 when
+    nothing is pending.
+    """
+    managed(store)
+    login_as(client, settings, email=LEADER_EMAIL, role="leader", teams=[TEAM])
+    client.post(SAVE, data={**FORM, "action": "submit"})
+    before = store.get_policy(TEAM, "DRAFT")
+
+    resp = client.post(f"/teams/{TEAM}/withdraw")
+
+    assert resp.status_code == 302 and resp.headers["location"] == f"/teams/{TEAM}?msg=msg.withdrawn"
+    after = store.get_policy(TEAM, "DRAFT")
+    assert after["status"] == "draft" and after["doc"] == before["doc"]
+    assert after.get("gateway_models") == before.get("gateway_models")
+    assert store.list_audit()[0]["action"] == "withdraw"
+    page = client.get(f"/teams/{TEAM}").text
+    assert 'name="action" value="submit"' in page and '<fieldset class="plain">' in page
+    assert client.post(f"/teams/{TEAM}/withdraw").status_code == 409
+    login_as(client, settings)
+    assert "승인 요청 취소" in client.get("/audit").text
 
 
 def test_lock_radios_default_to_the_strict_value_when_unset(client, settings, store):
