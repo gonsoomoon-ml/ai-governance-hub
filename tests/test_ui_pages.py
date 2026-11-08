@@ -157,7 +157,7 @@ def test_editor_fields_are_pick_lists_from_the_org_catalogs(client, settings, st
     assert "저장소: example-extensions — example/claude-extensions @ demo-2026-11 (회사 저장소)" in page
     assert 'name="plugins" value="deck-design"' in page and 'name="mcp_servers"' not in page
     assert 'placeholder="owner/repo"' not in page and "marketplace_repo" not in page
-    assert page.count('<details class="more">') == 5 and "자세히" in page
+    assert page.count('<details class="more">') == 6 and "자세히" in page  # 4 sections + 2 lock sub-blocks (0.1.21)
     assert "허용하는 사내 MCP 서버" in page and "허용하는 사내 에이전트" in page
     assert page.index("허용하는 사내 MCP 서버") < page.index("허용하는 사내 에이전트")
     assert "tool-gateway" in page
