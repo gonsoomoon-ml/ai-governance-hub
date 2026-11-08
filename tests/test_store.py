@@ -50,7 +50,7 @@ def test_teams_round_trip_and_removal(store):
 
 
 def test_draft_and_publish_keep_versions(store):
-    """초안 저장 -> 발행 -> 발행본·버전 이력·초안 상태.
+    """초안 저장 -> 배포 -> 배포본·버전 이력·초안 상태.
 
     Draft -> publish -> published copy, version history, draft status.
     """

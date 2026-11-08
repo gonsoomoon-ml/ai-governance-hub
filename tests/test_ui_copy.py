@@ -51,7 +51,7 @@ def test_help_page_is_open_to_leaders_and_linked_from_the_header(client, setting
     page = client.get("/help")
 
     assert page.status_code == 200
-    for term in ("허용 모델", "플러그인 저장소", "MCP", "잠금", "발행", "안전망", "게이트웨이"):
+    for term in ("허용 모델", "플러그인 저장소", "MCP", "잠금", "배포", "안전망", "게이트웨이"):
         assert term in page.text, term
     assert 'href="/help"' in client.get(f"/teams/{TEAM}").text
 
@@ -139,7 +139,7 @@ def test_empty_values_are_words_not_dashes(client, settings, store):
     client.post(SAVE, data={**FORM, "action": "publish"})
     client.post(SAVE, data={**FORM, "plugins": ""})
     page = client.get(f"/teams/{TEAM}").text
-    assert "(비어 있음)" in page and ">—<" not in page
+    assert "(없음)" in page and ">—<" not in page
 
 
 def test_empty_states_say_what_to_do_next(client, settings):
@@ -150,7 +150,7 @@ def test_empty_states_say_what_to_do_next(client, settings):
 
 
 def test_primary_button_is_the_next_action_for_the_role(client, settings, store):
-    """리더(작성 중): '저장 후 승인 요청' 이 채운 단추, 초안 저장은 보조. 관리자(승인 대기): 승인·발행이 채운 단추.
+    """리더(작성 중): '저장 후 승인 요청' 이 채운 단추, 초안 저장은 보조. 관리자(승인 대기): 승인·배포이 채운 단추.
 
     Leader editing: submit is primary and save secondary; admin on a pending draft: approve is primary.
     """
@@ -163,5 +163,5 @@ def test_primary_button_is_the_next_action_for_the_role(client, settings, store)
     client.post(SAVE, data={**FORM, "action": "submit"})
     login_as(client, settings)
     page = client.get(f"/teams/{TEAM}").text
-    assert 'action="/teams/' in page and '<button class="primary">승인·발행</button>' in page
+    assert 'action="/teams/' in page and '<button class="primary">승인·배포</button>' in page
     assert 'class="danger"' in page

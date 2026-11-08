@@ -1,4 +1,4 @@
-"""웹 화면: 팀 목록·정책 편집·제출·승인·발행·조직 설정·감사. 역할 가드 포함.
+"""웹 화면: 팀 목록·정책 편집·제출·승인·배포·조직 설정·감사. 역할 가드 포함.
 
 Web screens: teams, policy editor, submit, approve, publish, org settings, audit. Role guards included.
 """
@@ -90,7 +90,7 @@ def test_editor_shows_models_from_admin_api_and_agents_from_the_catalog(client, 
 
 
 def test_save_draft_then_submit_then_approve_publishes_and_pushes_models(client, settings, store, admin_api):
-    """저장 -> 제출(리더) -> 승인(관리자) = 발행: 버전 1, admin-api 에 허용 모델 PUT, 감사 기록.
+    """저장 -> 제출(리더) -> 승인(관리자) = 배포: 버전 1, admin-api 에 허용 모델 PUT, 감사 기록.
 
     Save -> submit (leader) -> approve (admin) = publish: version 1, allowed-models PUT, audit entries.
     """
@@ -120,7 +120,7 @@ def test_save_draft_then_submit_then_approve_publishes_and_pushes_models(client,
 
 
 def test_reject_sends_the_draft_back_with_a_reason(client, settings, store):
-    """반려: 상태 rejected + 사유, 발행본 없음.
+    """반려: 상태 rejected + 사유, 배포본 없음.
 
     Reject: status rejected with a reason, nothing published.
     """
@@ -167,7 +167,7 @@ def test_validation_errors_are_shown_and_nothing_is_saved(client, settings, stor
 
 
 def test_publish_is_refused_when_admin_api_is_down(client, settings, store, admin_api):
-    """admin-api 가 죽어 있으면 발행하지 않는다(모델 강제와 PC 목록이 어긋나지 않도록).
+    """admin-api 가 죽어 있으면 배포하지 않는다(모델 강제와 PC 목록이 어긋나지 않도록).
 
     When admin-api is down nothing is published (server enforcement and PC list must not diverge).
     """
@@ -234,7 +234,7 @@ def test_audit_page_lists_entries(client, settings, store):
     store.audit("publish", actor=ADMIN_EMAIL, team_id=TEAM, detail={"version": 1})
     login_as(client, settings)
 
-    assert "발행" in client.get("/audit").text
+    assert "배포" in client.get("/audit").text
 
 
 def test_remove_team_unmanages_it(client, settings, store):
@@ -250,7 +250,7 @@ def test_remove_team_unmanages_it(client, settings, store):
 
 
 def test_publish_ensures_gateway_targets_for_the_allowed_agents(client, settings, store, agentcore):
-    """발행은 허용된 에이전트의 게이트웨이 대상을 보장한다(에이전트가 없으면 부르지 않음).
+    """배포은 허용된 에이전트의 게이트웨이 대상을 보장한다(에이전트가 없으면 부르지 않음).
 
     Publishing ensures gateway targets for the allowed agents (not called when there are none).
     """
@@ -289,3 +289,24 @@ def test_agents_page_lists_registry_records_and_approval_refreshes_the_catalog(c
     assert agentcore.status_changes == [("api-catalog", "APPROVED")]
     assert [a["name"] for a in store.list_agents()] == ["api-catalog"]
     assert store.list_audit()[0]["action"] == "agent_approved"
+
+
+def test_changes_compare_the_draft_with_what_pcs_receive_now(client, settings, store):
+    """배포본이 없으면 변경 사항은 조직 기본 정책 기준(0.1.23): 머리말, 저장소 한 줄, 사내 MCP 서버/에이전트 두 줄, 빈 값은 '(없음)'.
+
+    Without a published copy the changes compare against the org default policy (0.1.23): header line, one
+    repository row, in-house MCP servers / agents on two rows, '(none)' for empty values.
+    """
+    managed(store)
+    login_as(client, settings)
+    client.post(f"/teams/{TEAM}/save", data=FORM)
+
+    page = client.get(f"/teams/{TEAM}").text
+
+    assert "지금 PC 가 받는 값(조직 기본 정책)" in page and "배포 후" in page
+    assert (
+        "<dt>플러그인 저장소</dt>" in page and "example-extensions — example/claude-extensions @ demo-2026-11" in page
+    )
+    assert "<dt>사내 MCP 서버</dt>" in page and "<dt>사내 에이전트</dt>" in page
+    assert "<dt>이름</dt>" not in page and "GitHub 저장소 (owner/repo)" not in page and "(비어 있음)" not in page
+    assert "(없음)" in page

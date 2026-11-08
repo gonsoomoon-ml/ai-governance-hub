@@ -887,10 +887,12 @@ def _render_editor(
     t = _t(request)
     gateway_models_differs = current is not None and _norm_models(current) != _norm_models(doc.get("models"))
     org = store.org_settings()
-    changes = policy_diff((published or {}).get("doc"), draft["doc"], t) if draft else []
+    catalog = store.list_agents()
+    current_doc = published["doc"] if published else org["default_policy"]  # what PCs receive now
+    changes = policy_diff(current_doc, draft["doc"], t, catalog, org["locks_fixed"]) if draft else []
     preview_basis = "draft" if draft else ("published" if published else "empty")
     step = step_of(draft, published)
-    receives = receives_summary(published["doc"], store.list_agents(), t) if published else ""
+    receives = receives_summary(published["doc"], catalog, t) if published else ""
     preview = _preview_context(request, doc, f"/teams/{team_id}/preview.json")
     return _render(
         request,

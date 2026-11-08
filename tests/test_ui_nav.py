@@ -20,7 +20,7 @@ def test_admin_sidebar_groups_items_by_pillar_with_descriptions_and_icons(client
     assert '<aside class="nav"' in page or 'id="sidenav"' in page
     for group in ("정하기", "도구 공유", "기록·도움"):
         assert group in page, group
-    assert "팀별 규칙을 쓰고 발행" in page  # description under 팀 정책
+    assert "팀별 규칙을 쓰고 배포" in page  # description under 팀 정책
     assert page.count("<svg") >= 6
     assert 'aria-current="page" class="active" href="/teams"' in page
     assert 'aria-expanded="true"' in page and "메뉴 접기" in page

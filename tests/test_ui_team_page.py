@@ -46,7 +46,7 @@ def test_action_submit_with_errors_changes_nothing(client, settings, store):
 
 
 def test_admin_action_publish_saves_and_publishes_in_one_step(client, settings, store):
-    """관리자의 '저장 후 바로 발행' 은 저장과 발행을 한 번에.
+    """관리자의 '저장 후 바로 배포' 은 저장과 배포을 한 번에.
 
     The admin's 'save and publish now' stores and publishes in one step.
     """
@@ -62,7 +62,7 @@ def test_admin_action_publish_saves_and_publishes_in_one_step(client, settings, 
 
 
 def test_leader_cannot_use_action_publish(client, settings, store):
-    """리더에게 바로 발행은 없다.
+    """리더에게 바로 배포은 없다.
 
     Leaders cannot publish directly.
     """
@@ -105,7 +105,7 @@ def test_lock_radios_default_to_the_strict_value_when_unset(client, settings, st
 
 
 def test_change_table_lists_differences_between_published_and_draft(client, settings, store):
-    """발행본과 다른 초안이 있으면 '변경 사항' 표에 전/후가 보이고, 같아지면 사라진다.
+    """배포본과 다른 초안이 있으면 '변경 사항' 표에 전/후가 보이고, 같아지면 사라진다.
 
     A draft that differs from the published copy shows a change table with before/after; equal again hides it.
     """
@@ -123,7 +123,7 @@ def test_change_table_lists_differences_between_published_and_draft(client, sett
 
 
 def test_status_card_labels_preview_basis_and_current_version(client, settings, store):
-    """상태 카드에 '초안:'·'발행본:' 라벨, 미리보기 기준 표시, 발행 이력의 '현재' 표시.
+    """상태 카드에 '초안:'·'배포본:' 라벨, 미리보기 기준 표시, 배포 이력의 '현재' 표시.
 
     Status card has draft/published labels, the preview names its basis, the history marks the current version.
     """
@@ -131,7 +131,7 @@ def test_status_card_labels_preview_basis_and_current_version(client, settings, 
     login_as(client, settings)
 
     empty = client.get(f"/teams/{TEAM}").text
-    assert "초안:" in empty and "발행본:" in empty and "(빈 정책 기준)" in empty
+    assert "초안:" in empty and "배포본:" in empty and "(빈 정책 기준)" in empty
 
     client.post(SAVE, data={**FORM, "action": "publish"})
     client.post(SAVE, data={**FORM, "plugins": "concise-response\n"})

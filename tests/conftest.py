@@ -117,7 +117,7 @@ def admin_api() -> FakeAdminApi:
 
 @pytest.fixture
 def agentcore() -> FakeAgentCore:
-    """AgentCore 흉내: 발행 때 보장한 대상 이름을 기록한다.
+    """AgentCore 흉내: 배포 때 보장한 대상 이름을 기록한다.
 
     A fake AgentCore that records the targets ensured at publish.
     """

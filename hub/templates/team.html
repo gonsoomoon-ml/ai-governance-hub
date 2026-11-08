@@ -61,7 +61,8 @@
 
   {% if changes %}
   <div class="card">
-    <h2>{{ t("team.changes") }}{% if not published %} <span class="muted">({{ t("team.changes.new") }})</span>{% endif %}</h2>
+    <h2>{{ t("team.changes") }}</h2>
+    <p class="hint">{% if published %}{{ t("team.changes.basis.published").format(n=published.version) }}{% else %}{{ t("team.changes.basis.default") }}{% endif %} → {{ t("team.changes.after") }}</p>
     <dl class="changes">
       {% for c in changes %}<dt>{{ t(c.field) }}</dt><dd><span class="muted">{{ c.before or t("changes.empty") }}</span> → {{ c.after or t("changes.empty") }}</dd>{% endfor %}
     </dl>

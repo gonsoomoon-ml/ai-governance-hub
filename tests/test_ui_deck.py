@@ -54,7 +54,7 @@ def test_teams_landing_states_one_hub_four_enforcement_points(client, settings, 
 
 
 def test_team_page_shows_what_the_team_receives_after_publish(client, settings, store):
-    """팀 화면 오른쪽 카드: 발행 전엔 '지금 할 일' 만, 발행 뒤 '이 팀이 받는 것' 한 줄(개수). 설명 표는 없다.
+    """팀 화면 오른쪽 카드: 배포 전엔 '지금 할 일' 만, 배포 뒤 '이 팀이 받는 것' 한 줄(개수). 설명 표는 없다.
 
     Team page card: before publish only 'what to do now'; after publish one 'what this team receives' line
     with counts. No explanatory table.
@@ -70,7 +70,7 @@ def test_team_page_shows_what_the_team_receives_after_publish(client, settings, 
     page = client.get(f"/teams/{TEAM}").text
     assert "이 팀이 받는 것" in page
     assert "모델 2 · 플러그인 2 · 사내 MCP 서버 1 · 사내 에이전트 1" in page
-    assert "발행됐습니다" in page
+    assert "배포됐습니다" in page
 
 
 def test_lock_rows_name_the_real_setting_keys(client, settings, store):

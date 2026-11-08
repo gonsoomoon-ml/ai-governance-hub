@@ -99,7 +99,7 @@ def test_catalog_routes_need_an_admin(client, settings, store):
 
 
 def test_saved_document_copies_repo_and_ref_from_the_catalog(client, settings, store):
-    """팀 저장: 폼은 이름만 보내고(저장소 하나면 hidden), 문서에는 카탈로그의 repo·ref 가 복사돼 발행본이 완결된다.
+    """팀 저장: 폼은 이름만 보내고(저장소 하나면 hidden), 문서에는 카탈로그의 repo·ref 가 복사돼 배포본이 완결된다.
 
     Team save: the form sends the name only (hidden when there is one repository); the document carries the
     catalog's repo/ref so the published copy stays self-contained.

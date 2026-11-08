@@ -1,5 +1,5 @@
-"""감사 기록의 참(0.1.9): 승인 기록은 발행이 성공한 뒤에만 남고, 발행의 admin-api PUT 은 x-request-id 로
-허브의 발행 기록과 이어진다.
+"""감사 기록의 참(0.1.9): 승인 기록은 배포이 성공한 뒤에만 남고, 배포의 admin-api PUT 은 x-request-id 로
+허브의 배포 기록과 이어진다.
 
 Audit truthfulness (0.1.9): "approve" is recorded only after a successful publish, and the publish's
 admin-api PUT carries an x-request-id that matches the hub's publish entry.
@@ -36,7 +36,7 @@ def test_no_approve_entry_when_publish_fails(client, settings, store, admin_api)
 
 
 def test_approve_entry_follows_a_successful_publish_and_carries_the_version(client, settings, store, admin_api):
-    """발행이 성공하면 '승인' 기록이 발행 번호와 함께 남는다.
+    """배포이 성공하면 '승인' 기록이 배포 번호와 함께 남는다.
 
     A successful publish leaves an "approve" entry carrying the version number.
     """
@@ -51,7 +51,7 @@ def test_approve_entry_follows_a_successful_publish_and_carries_the_version(clie
 
 
 def test_publish_put_carries_the_request_id_recorded_in_the_audit_entry(client, settings, store, admin_api):
-    """허용 모델 PUT 의 x-request-id = 허브 발행 기록의 request_id (admin-api 감사 기록과 잇는 값).
+    """허용 모델 PUT 의 x-request-id = 허브 배포 기록의 request_id (admin-api 감사 기록과 잇는 값).
 
     The allowed-models PUT's x-request-id equals the hub publish entry's request_id (the link to admin-api's audit).
     """

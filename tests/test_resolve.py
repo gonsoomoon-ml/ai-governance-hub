@@ -32,7 +32,7 @@ def test_requires_the_hub_bearer_token(client):
 
 
 def test_published_team_policy_becomes_the_fragment(client, store):
-    """발행된 팀 정책이 조각이 된다(버전 = 조각 해시).
+    """배포된 팀 정책이 조각이 된다(버전 = 조각 해시).
 
     The published team policy becomes the fragment (version = fragment hash).
     """
@@ -72,7 +72,7 @@ def test_unmanaged_team_and_empty_team_get_the_org_default(client, store):
 
 
 def test_managed_team_without_a_published_policy_gets_the_org_default(client, store):
-    """관리 팀이라도 발행본이 없으면 조직 기본.
+    """관리 팀이라도 배포본이 없으면 조직 기본.
 
     A managed team without a published policy gets the org default.
     """
@@ -94,7 +94,7 @@ def test_extra_and_missing_body_keys_are_tolerated(client):
 
 
 def test_version_is_stable_across_calls_and_changes_on_publish(client, store):
-    """같은 정책이면 버전이 같고, 재발행하면 달라진다.
+    """같은 정책이면 버전이 같고, 재배포하면 달라진다.
 
     The version is the same for the same policy and changes on a new publish.
     """

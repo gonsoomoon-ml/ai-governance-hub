@@ -14,9 +14,9 @@ SAVE = f"/teams/{TEAM}/save"
 
 
 def test_teams_list_shows_dept_and_team_together_and_unpublished_markers(client, settings, store):
-    """팀 목록: '부서 / 팀' 한 칸, 발행본 없음은 '미발행', 추가 목록의 인원은 '(n명)', 관리 해제는 확인창.
+    """팀 목록: '부서 / 팀' 한 칸, 배포본 없음은 '미배포', 추가 목록의 인원은 '(n명)', 관리 해제는 확인창.
 
-    Teams list: one 'dept / team' cell, '미발행' for no published copy, '(n명)' member counts, confirm on remove.
+    Teams list: one 'dept / team' cell, '미배포' for no published copy, '(n명)' member counts, confirm on remove.
     """
     managed(store)
     login_as(client, settings)
@@ -24,7 +24,7 @@ def test_teams_list_shows_dept_and_team_together_and_unpublished_markers(client,
     page = client.get("/teams").text
 
     assert "engineering / platform" in page
-    assert "미발행" in page
+    assert "미배포" in page
     assert "(2명)" in page
     assert 'onsubmit="return confirm(' in page
 
@@ -90,13 +90,13 @@ def test_audit_page_shows_labels_team_names_and_local_time(client, settings, sto
 
     page = client.get("/audit").text
 
-    assert "발행" in page and "engineering / platform" in page
+    assert "배포" in page and "engineering / platform" in page
     assert re.search(r"\d\d/\d\d \d\d:\d\d:\d\d", page)
     assert "<details>" in page and "&#34;version&#34;: 1" in page  # autoescaped JSON inside <pre>
 
 
 def test_org_page_names_the_safety_net_and_lists_the_teams_receiving_it(client, settings, store):
-    """조직 설정: '기본 정책 (안전망)' 과 '비워 두면' 설명, 지금 그 정책을 받는 팀 목록(발행되면 빠짐).
+    """조직 설정: '기본 정책 (안전망)' 과 '비워 두면' 설명, 지금 그 정책을 받는 팀 목록(배포되면 빠짐).
 
     Org page: the safety-net name and 'empty means' hint, and the teams currently receiving it (gone once published).
     """
