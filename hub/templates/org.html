@@ -8,11 +8,14 @@
     <h2 style="margin-top:0">{{ t("org.locks") }}</h2>
     <p class="hint">{{ t("org.locks.hint") }}</p>
     {% for key, choices in lock_choices.items() %}
-    <div><strong>{{ t("lock." + key) }}</strong>
-      <label class="inline"><input type="radio" name="fixed_{{ key }}" value="" {% if not org.locks_fixed.get(key) %}checked{% endif %}> {{ t("org.team_decides") }}</label>
-      {% for c in choices %}
-      <label class="inline"><input type="radio" name="fixed_{{ key }}" value="{{ c }}" {% if org.locks_fixed.get(key) == c %}checked{% endif %}> {{ t("org.fixed_prefix") }} {{ t("lock." + key + "." + c) }}</label>
-      {% endfor %}
+    <div class="lockrow stack">
+      <div class="lockname" title="{{ t('lock.keys.prefix') }} {{ t('lock.' + key + '.keys') }}">{{ t("lock." + key) }}</div>
+      <div class="lockopts">
+        <label><input type="radio" name="fixed_{{ key }}" value="" {% if not org.locks_fixed.get(key) %}checked{% endif %}> <strong>{{ t("org.team_decides") }}</strong> <span class="desc">{{ t("org.team_decides.desc") }}</span></label>
+        {% for c in choices %}
+        <label><input type="radio" name="fixed_{{ key }}" value="{{ c }}" {% if org.locks_fixed.get(key) == c %}checked{% endif %}> <strong>{{ t("org.fixed_prefix") }} {{ t("lock." + key + "." + c) }}</strong> <span class="desc">{{ t("lock." + key + "." + c + ".desc") }}</span></label>
+        {% endfor %}
+      </div>
     </div>
     {% endfor %}
     <div class="actions"><button class="primary">{{ t("org.save") }}</button></div>

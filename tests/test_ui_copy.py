@@ -94,9 +94,26 @@ def test_field_help_lines_explain_each_section(client, settings, store):
         "게이트웨이가 서버에서 막으므로",
         "태그를 적으면",
         "도구 게이트웨이",
-        "스스로 바꿀 수 있는 범위",
+        "스스로 더 넣을 수 있는 범위",
     ):
         assert phrase in page, phrase
+
+
+def test_lock_options_say_what_they_do_on_the_pc(client, settings, store):
+    """잠금 선택지마다 PC 에서 일어나는 일이 한 줄씩 붙고, 조직 설정의 같은 라디오에도 붙는다(0.1.19).
+
+    Every lock option carries a one-line effect on the PC; the same radios in organization settings carry it too (0.1.19).
+    """
+    managed(store)
+    login_as(client, settings)
+
+    team = client.get(f"/teams/{TEAM}").text
+    org = client.get("/org").text
+
+    for phrase in ("공식 마켓·다른 저장소 추가는 차단", "Anthropic 공식 마켓", "파일로 직접 넣는 설치 포함"):
+        assert phrase in team, phrase
+    for phrase in ("각 팀이 팀 정책 화면에서 고름", "tool-gateway 만 연결됩니다", "claude mcp add"):
+        assert phrase in org, phrase
 
 
 def test_nav_marks_the_current_page_and_role_has_a_tooltip(client, settings, store):

@@ -149,6 +149,11 @@
   .lockrow:first-of-type { border-top: 0; }
   .lockrow .lockname { font-weight: 600; }
   .lockrow .lockopts label { display: inline-block; margin: 2px 16px 2px 0; }
+  .lockrow.stack .lockopts label { display: block; margin: 4px 0; padding-left: 1.6em; text-indent: -1.6em; }
+  .lockrow .desc { color: var(--muted); margin-left: 6px; }
+  .lockrow .fixedrow { margin: 4px 0; }
+  .lockrow .fixedrow .fixedname { display: inline-block; min-width: 110px; }
+  .lockrow.fixedblock .lockname { color: var(--muted); }
   button { font: inherit; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); cursor: pointer; color: var(--ink); }
   button:hover { border-color: var(--muted); }
   button.primary { background: var(--coral-fill); color: var(--coral-fill-ink); border-color: var(--coral-fill); font-weight: 600; }

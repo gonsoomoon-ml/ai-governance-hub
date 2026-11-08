@@ -94,22 +94,32 @@
 <fieldset class="p1">
   <legend>{{ t("team.locks") }}</legend>
   {{ more(t("help.locks.short"), t("help.locks")) }}
+  {# choosable locks: one option per line with what it does on the PC; org-fixed ones are listed read-only below #}
   {% set ns = namespace(fixed=[]) %}
   {% for key, choices in lock_choices.items() %}
   {% set fixed = org.locks_fixed.get(key) if org else none %}
   {% if fixed %}
-    {% set ns.fixed = ns.fixed + [t("lock." + key) ~ " " ~ t("lock." + key + "." + fixed)] %}
+    {% set ns.fixed = ns.fixed + [(key, fixed)] %}
     <input type="hidden" name="lock_{{ key }}" value="{{ fixed }}">
   {% else %}
-  <div class="lockrow">
-    <div class="lockname" title="{{ t('lock.' + key + '.keys') }}">{{ t("lock." + key) }}</div>
+  <div class="lockrow stack">
+    <div class="lockname" title="{{ t('lock.keys.prefix') }} {{ t('lock.' + key + '.keys') }}">{{ t("lock." + key) }}</div>
     <div class="lockopts">
       {% for c in choices %}
-      <label><input type="radio" name="lock_{{ key }}" value="{{ c }}" {% if (doc.locks or {}).get(key, lock_defaults[key]) == c %}checked{% endif %}> {{ t("lock." + key + "." + c) }}{% if c == lock_defaults[key] %} <span class="muted">{{ t("lock.default_marker") }}</span>{% endif %}</label>
+      <label><input type="radio" name="lock_{{ key }}" value="{{ c }}" {% if (doc.locks or {}).get(key, lock_defaults[key]) == c %}checked{% endif %}> <strong>{{ t("lock." + key + "." + c) }}</strong>{% if c == lock_defaults[key] %} <span class="muted">{{ t("lock.default_marker") }}</span>{% endif %} <span class="desc">{{ t("lock." + key + "." + c + ".desc") }}</span></label>
       {% endfor %}
     </div>
   </div>
   {% endif %}
   {% endfor %}
-  {% if ns.fixed %}<p class="hint fixedline" title="{{ t('lock.fixed.tip') }}">{{ t("lock.fixed.line").format(items=ns.fixed | join(" · ")) }}</p>{% endif %}
+  {% if ns.fixed %}
+  <div class="lockrow stack fixedblock" title="{{ t('lock.fixed.tip') }}">
+    <div class="lockname">{{ t("lock.fixed.heading") }}</div>
+    <div class="lockopts">
+      {% for key, value in ns.fixed %}
+      <div class="fixedrow"><span class="fixedname" title="{{ t('lock.keys.prefix') }} {{ t('lock.' + key + '.keys') }}">{{ t("lock." + key) }}</span> <strong>{{ t("lock." + key + "." + value) }}</strong> <span class="desc">{{ t("lock." + key + "." + value + ".desc") }}</span></div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 </fieldset>
