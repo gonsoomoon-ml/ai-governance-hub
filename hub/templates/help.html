@@ -12,6 +12,23 @@
   </ol>
 </div>
 
+{# the two ways a policy reaches PCs: the leader path (request -> approval) and the administrator path (publish now) #}
+<div class="card p1">
+  <h2>{{ t("help.paths.title") }}</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>{{ t("help.paths.col.path") }}</th><th>{{ t("help.paths.col.how") }}</th><th>{{ t("help.paths.col.audit") }}</th></tr>
+    {% for n in (1, 2) %}
+    <tr><td><strong>{{ t("help.paths." ~ n ~ ".name") }}</strong></td><td>{{ t("help.paths." ~ n ~ ".how") }}</td><td class="mono">{{ t("help.paths." ~ n ~ ".audit") }}</td></tr>
+    {% endfor %}
+  </table>
+  </div>
+  <ul class="hint" style="margin:8px 0 0">
+    <li>{{ t("help.paths.note.1") }}</li>
+    <li>{{ t("help.paths.note.2") }}</li>
+  </ul>
+</div>
+
 <div class="card">
   <h2>{{ t("help.gloss.title") }}</h2>
   <div class="table-wrap">

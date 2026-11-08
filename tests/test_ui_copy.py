@@ -165,3 +165,20 @@ def test_primary_button_is_the_next_action_for_the_role(client, settings, store)
     page = client.get(f"/teams/{TEAM}").text
     assert 'action="/teams/' in page and '<button class="primary">승인·배포</button>' in page
     assert 'class="danger"' in page
+
+
+def test_help_explains_the_two_publish_paths(client, settings, store):
+    """도움말: '배포의 두 길' 표(리더 길 / 관리자 길 + 감사 기록) 와 흐름·역할 줄의 보강, FAQ 조사 오타 수정(0.1.28).
+
+    Help: the 'two ways to publish' table (leader path / administrator path with audit entries), the flow and
+    role lines mention it, and the FAQ particle typo is fixed (0.1.28).
+    """
+    managed(store)
+    login_as(client, settings)
+
+    page = client.get("/help").text
+
+    assert "배포의 두 길" in page and "(1) 리더 길" in page and "(2) 관리자 길" in page
+    assert "저장 · 승인 요청 · 배포 · 승인" in page and "저장 · 배포" in page
+    assert "승인권은 관리자에게만" in page and "승인 없이 바로 배포할 수도" in page
+    assert "배포를 되돌리려면?" in page and "배포을" not in page
