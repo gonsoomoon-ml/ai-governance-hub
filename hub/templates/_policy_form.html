@@ -94,13 +94,17 @@
 <fieldset class="p1">
   <legend>{{ t("team.locks") }}</legend>
   {{ more(t("help.locks.short"), t("help.locks")) }}
-  {# choosable locks: one option per line with what it does on the PC; org-fixed ones are listed read-only below #}
-  {% set ns = namespace(fixed=[]) %}
+  {# every lock is one row in a fixed order; an org-fixed one shows a badge and its single value (greyed) instead of radios #}
+  {% set ns = namespace(fixed=false) %}
   {% for key, choices in lock_choices.items() %}
   {% set fixed = org.locks_fixed.get(key) if org else none %}
   {% if fixed %}
-    {% set ns.fixed = ns.fixed + [(key, fixed)] %}
-    <input type="hidden" name="lock_{{ key }}" value="{{ fixed }}">
+  {% set ns.fixed = true %}
+  <input type="hidden" name="lock_{{ key }}" value="{{ fixed }}">
+  <div class="lockrow stack fixed">
+    <div class="lockname" title="{{ t('lock.keys.prefix') }} {{ t('lock.' + key + '.keys') }}">{{ t("lock." + key) }} <span class="pill" title="{{ t('lock.fixed.tip') }}">{{ t("team.locks.fixed") }}</span></div>
+    <div class="lockopts"><div class="fixedrow"><strong>{{ t("lock." + key + "." + fixed) }}</strong> <span class="desc">{{ t("lock." + key + "." + fixed + ".desc") }}</span></div></div>
+  </div>
   {% else %}
   <div class="lockrow stack">
     <div class="lockname" title="{{ t('lock.keys.prefix') }} {{ t('lock.' + key + '.keys') }}">{{ t("lock." + key) }}</div>
@@ -112,14 +116,5 @@
   </div>
   {% endif %}
   {% endfor %}
-  {% if ns.fixed %}
-  <div class="lockrow stack fixedblock" title="{{ t('lock.fixed.tip') }}">
-    <div class="lockname">{{ t("lock.fixed.heading") }}</div>
-    <div class="lockopts">
-      {% for key, value in ns.fixed %}
-      <div class="fixedrow"><span class="fixedname" title="{{ t('lock.keys.prefix') }} {{ t('lock.' + key + '.keys') }}">{{ t("lock." + key) }}</span> <strong>{{ t("lock." + key + "." + value) }}</strong> <span class="desc">{{ t("lock." + key + "." + value + ".desc") }}</span></div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
+  {% if ns.fixed %}<p class="hint fixednote">ⓘ {{ t("lock.fixed.note.org" if on_org else "lock.fixed.note") }}</p>{% endif %}
 </fieldset>

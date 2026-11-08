@@ -158,6 +158,7 @@ def test_leader_team_page_speaks_to_the_leader(client, settings, store):
 
     assert "내 팀의" in page
     assert "관리자가 조직 설정에서 정한 값" in page
+    assert "여기서는 바꿀 수 없습니다" in page and "잠금 항목별" not in page  # the leader note, not the admin one
 
 
 def test_help_page_uses_the_deck_glossary_and_links_the_deck(client, settings):

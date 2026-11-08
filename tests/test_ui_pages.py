@@ -115,9 +115,9 @@ def test_org_page_names_the_safety_net_and_lists_the_teams_receiving_it(client, 
 
 
 def test_org_fixed_locks_are_read_only_in_the_default_policy(client, settings, store):
-    """조직 고정된 항목은 기본 정책 폼에서 라디오 대신 '조직 고정' 묶음에 값·뜻 한 줄로, 값은 hidden 으로 전달.
+    """조직 고정된 항목은 기본 정책 폼에서 라디오 대신 '조직 고정' 배지 + 값·뜻 한 줄(회색)로, 값은 hidden 으로 전달.
 
-    An org-fixed lock shows as a read-only line (value + meaning) under the fixed block, not as radios; its value travels hidden.
+    An org-fixed lock shows as an 'org-fixed' badge with its value and meaning (greyed), not as radios; its value travels hidden.
     """
     login_as(client, settings)
     client.post(
@@ -133,8 +133,9 @@ def test_org_fixed_locks_are_read_only_in_the_default_policy(client, settings, s
 
     page = client.get("/org").text
 
-    assert "조직 고정 — 조직 설정에서만 바꿈" in page
+    assert '<span class="pill" title="관리자가 조직 설정에서 정한 값' in page  # the badge, in the row itself
     assert "개인 스킬·훅은 무시되고 플러그인으로만" in page  # the fixed value is shown with what it does
+    assert "위 「잠금 항목별」에서 바꿉니다" in page  # on the org page the note points at the card above
     assert 'name="lock_personal_customization" value="allow"' not in page
     assert 'type="hidden" name="lock_personal_customization" value="block"' in page
     assert 'name="lock_plugin_sources" value="company_only"' in page
