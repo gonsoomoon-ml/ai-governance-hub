@@ -18,12 +18,28 @@ def test_admin_sidebar_groups_items_by_pillar_with_descriptions_and_icons(client
     page = client.get("/teams").text
 
     assert '<aside class="nav"' in page or 'id="sidenav"' in page
-    for group in ("정하기", "도구 공유", "기록·도움"):
+    for group in ("정책 관리", "도구 공유", "활동 기록"):
         assert group in page, group
     assert "팀별 규칙을 쓰고 배포" in page  # description under 팀 정책
     assert page.count("<svg") >= 6
     assert 'aria-current="page" class="active" href="/teams"' in page
     assert 'aria-expanded="true"' in page and "메뉴 접기" in page
+
+
+def test_leader_sidebar_has_help_at_the_bottom_but_no_activity_group(client, settings, store):
+    """리더 메뉴: 도움말은 묶음 밖 맨 아래에 있고, 활동 기록(감사 기록)·도구 공유 묶음은 없다 (0.1.30).
+
+    Leader sidebar: Help sits below the groups; no Activity (audit) group and no Share tools group (0.1.30).
+    """
+    managed(store)
+    login_as(client, settings, email=LEADER_EMAIL, role="leader", teams=[TEAM])
+
+    page = client.get(f"/teams/{TEAM}").text
+
+    assert 'href="/help"' in page and "도움말" in page
+    assert "활동 기록" not in page and 'href="/audit"' not in page
+    assert 'href="/plugins"' not in page  # 기둥 칩 "사내 개발 AI 도구 공유" 는 남으므로 링크로만 본다
+    assert page.index('class="group-title">정책 관리') < page.index('href="/help"')
 
 
 def test_sidebar_lists_managed_teams_with_status_and_counts_pending_requests(client, settings, store):

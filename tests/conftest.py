@@ -98,7 +98,7 @@ MARKET = {
 
 
 def seed_catalogs(store: Store) -> None:
-    """팀이 고르는 조직 카탈로그(회사 저장소 1 · 승인된 사내 MCP 서버·에이전트 2)를 심는다.
+    """팀이 고르는 조직 카탈로그(사내 저장소 1 · 승인된 사내 MCP 서버·에이전트 2)를 심는다.
 
     Seed the catalogs teams pick from (one company marketplace, two approved in-house records).
     """

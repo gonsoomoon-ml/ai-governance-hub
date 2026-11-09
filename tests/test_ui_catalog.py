@@ -140,7 +140,7 @@ def test_team_page_explains_an_unread_repository_and_links_admins_to_the_plugins
 
     login_as(client, settings, email=LEADER_EMAIL, role="leader", teams=(TEAM,))
     page = client.get(f"/teams/{TEAM}").text
-    assert "회사 저장소를 읽고 플러그인을 승인하면 여기서 고릅니다" in page and "관리형 MCP 서버" not in page
+    assert "사내 저장소를 읽고 플러그인을 승인하면 여기서 고릅니다" in page and "관리형 MCP 서버" not in page
     assert 'href="/plugins"' not in page.split("</h1>")[1].split("<aside")[0]  # leaders get no admin link in the form
 
     client.cookies.clear()

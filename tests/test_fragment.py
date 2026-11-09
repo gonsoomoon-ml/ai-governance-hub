@@ -46,7 +46,7 @@ def test_fragment_never_contains_model_keys_even_when_the_policy_lists_models():
 
 
 def test_company_only_marketplace_pins_the_tag_and_blocks_sideload():
-    """회사 저장소만: strictKnownMarketplaces 에 태그 고정된 회사 소스 하나, sideload 차단.
+    """사내 저장소만: strictKnownMarketplaces 에 태그 고정된 회사 소스 하나, sideload 차단.
 
     Company only: strictKnownMarketplaces holds the one company source pinned to its tag; sideload blocked.
     """
@@ -119,7 +119,7 @@ def test_org_fixed_lock_overrides_the_team_choice():
 
 
 def test_no_marketplace_and_company_only_blocks_every_marketplace():
-    """마켓 없이 회사 저장소만 = 아무 마켓도 허용 안 함([]), 플러그인 키 없음.
+    """마켓 없이 사내 저장소만 = 아무 마켓도 허용 안 함([]), 플러그인 키 없음.
 
     No marketplace with company only = no marketplace allowed ([]), no plugin keys.
     """

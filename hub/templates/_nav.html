@@ -44,9 +44,13 @@
     {{ item("/agents", "agents", t("nav.agents")) }}
   </div>
   {% endif %}
+  {% if session.role == "admin" %}
   <div class="group">
     <div class="group-title">{{ t("nav.group.records") }}</div>
-    {% if session.role == "admin" %}{{ item("/audit", "audit", t("nav.audit")) }}{% endif %}
+    {{ item("/audit", "audit", t("nav.audit")) }}
+  </div>
+  {% endif %}
+  <div class="group">
     {{ item("/help", "help", t("nav.help")) }}
   </div>
 </aside>
