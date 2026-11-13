@@ -39,6 +39,26 @@ ai-governance-hub/
 └── pyproject.toml · uv.lock      의존성 (uv)
 ```
 
+## 코드 읽는 순서
+
+처음 읽는다면 이 순서가 쉽습니다. 괄호 안은 그 파일에서 먼저 볼 함수입니다.
+
+1. `hub/main.py` (`create_app`) — 부품을 `app.state` 에 넣고 주소 묶음 셋(resolve · auth · ui)을
+   붙입니다. 이후 코드의 `request.app.state.…` 는 모두 여기서 넣은 부품입니다.
+2. `hub/config.py` (`Settings`) — 환경 변수를 담는 칸입니다. 비밀 값이 비면 거절하고,
+   기능 값이 비면 그 기능이 꺼집니다.
+3. `hub/store.py` (`get_policy` · `put_draft` · `publish`) — 표 하나에 `pk`(서랍) · `sk`(칸)로
+   나눠 담습니다. 초안과 발행본이 따로 있고, PC 는 발행본만 받습니다.
+4. `hub/fragment.py` (`build_fragment`) — 정책 문서를 Claude Code 키로 바꾸는 핵심입니다.
+   잠금은 조직 고정 > 팀 > 엄격한 기본값 순이고, 모델 키는 내지 않습니다.
+5. `hub/routers/resolve.py` (`resolve`) — 게이트웨이가 부르는 20줄입니다.
+   그 팀의 발행본(없으면 조직 기본 정책)을 조각으로 돌려줍니다.
+6. `hub/routers/ui.py` (`save_draft` · `_publish`) — 처리 함수는 모두
+   권한 확인 → 꺼내기 → 일 → 화면 또는 다른 주소로 보내기 순서입니다.
+   배포는 게이트웨이에 먼저 쓰고, 발행본 저장은 맨 뒤입니다.
+7. `hub/auth.py` (`callback` · `derive_role`) → `gateway_api.py` → `agentcore.py` —
+   로그인과 바깥 호출입니다.
+
 ## 허브가 하는 일 두 가지
 
 ### 1. 정책 배포 (사람 → 허브 → 게이트웨이)
