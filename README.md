@@ -42,12 +42,7 @@
 
 ## 구성
 
-- `hub/` — 허브 앱(FastAPI + 서버 렌더 화면, DynamoDB 표 하나)
-- `deploy/helm/governance-hub/` — Helm 차트
-- `deploy/hub/` — 표·역할, 로그인 콜백, 서비스 토큰, values 를 만드는 스크립트
-- `agents/` · `deploy/agentcore/` — 예시 사내 에이전트 2종과 AgentCore 자원 스크립트(삭제 스크립트 포함)
-- `tests/` — pytest 204개(AWS 없이 돕니다)
-- `docs/diagram-src/` — 위 그림의 생성기
+폴더와 파일 안내 → [docs/structure.md](docs/structure.md)
 
 ## 실제로 배포하려면
 
